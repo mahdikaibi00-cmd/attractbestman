@@ -210,13 +210,22 @@ export default function EbookSalesPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      !function(e:any){if(!window.pintrk){window.pintrk=function(){
-      window.pintrk.queue.push(Array.prototype.slice.call(arguments))};
-      var n=window.pintrk;n.queue=[],n.version="3.0";
-      var t=document.createElement("script");
-      t.async=!0,t.src=e;
-      var r=document.getElementsByTagName("script")[0];
-      r.parentNode?.insertBefore(t,r)}}("https://s.pinimg.com/ct/core.js");
+      // Wrapped in standard parentheses to pass strict TypeScript build
+      (function(e: any) {
+        if (!window.pintrk) {
+          window.pintrk = function() {
+            window.pintrk.queue.push(Array.prototype.slice.call(arguments));
+          };
+          var n = window.pintrk;
+          n.queue = [];
+          n.version = "3.0";
+          var t = document.createElement("script");
+          t.async = true; // Changed from !0 to true
+          t.src = e;
+          var r = document.getElementsByTagName("script")[0];
+          r?.parentNode?.insertBefore(t, r);
+        }
+      })("https://s.pinimg.com/ct/core.js");
 
       TAG_IDS.forEach((id) => {
         (window as any).pintrk("load", id);
