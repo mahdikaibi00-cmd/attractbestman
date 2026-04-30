@@ -232,7 +232,7 @@ export default function EbookSalesPage() {
         (window as any).pintrk("page");
       });
     }
-// ... rest of the useEffect stays the same
+
 
     const ctaElements = document.querySelectorAll(".page-cta-button");
     const observer = new IntersectionObserver(
@@ -737,14 +737,24 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-      {/* --- FOOTER & LEGAL MODALS --- */}
-      <footer className="pt-6 pb-24 border-t border-[#1F0E13] bg-[#0A0406] text-center text-[10px] font-bold tracking-widest uppercase text-pink-900/60">
-        <div className="flex justify-center items-center gap-6 mb-3">
-          <button onClick={() => setActiveModal("privacy")} className="hover:text-pink-400 transition-colors uppercase tracking-widest">Privacy Policy</button>
-          <span>·</span>
-          <button onClick={() => setActiveModal("terms")} className="hover:text-pink-400 transition-colors uppercase tracking-widest">Terms of Service</button>
+{/* --- FOOTER & LEGAL MODALS --- */}
+      <footer className="pt-8 pb-10 border-t border-[#1F0E13] bg-[#0A0406] text-center text-[11px] font-bold tracking-widest uppercase text-white/80">
+        <div className="flex justify-center items-center gap-6 mb-4">
+          <button 
+            onClick={() => setActiveModal("privacy")} 
+            className="hover:text-pink-400 hover:drop-shadow-[0_0_12px_rgba(244,63,94,0.8)] active:text-pink-400 active:drop-shadow-[0_0_12px_rgba(244,63,94,0.8)] active:scale-95 transition-all duration-300 uppercase tracking-widest"
+          >
+            Privacy Policy
+          </button>
+          <span className="opacity-40">·</span>
+          <button 
+            onClick={() => setActiveModal("terms")} 
+            className="hover:text-pink-400 hover:drop-shadow-[0_0_12px_rgba(244,63,94,0.8)] active:text-pink-400 active:drop-shadow-[0_0_12px_rgba(244,63,94,0.8)] active:scale-95 transition-all duration-300 uppercase tracking-widest"
+          >
+            Terms of Service
+          </button>
         </div>
-        <p>© 2026 Attract Best Man. All rights reserved.</p>
+        <p className="opacity-60 text-[10px]">© 2026 Attract Best Man. All rights reserved.</p>
       </footer>
 
       {/* LEGAL MODALS (APPLE GLASSMORPHISM) */}
