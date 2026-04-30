@@ -55,21 +55,66 @@ const FAQS = [
 const CheckoutForm = ({ onEmailChange, email, name, onNameChange, setCheckoutState }: any) => {
   const stripe = useStripe();
   const elements = useElements();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!stripe || !elements) return;
 
-    trackPinterest("checkout");
+    setErrorMessage(null);
+
+    // Generate a unique ID for deduplication
+    const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    // Fire frontend Pinterest tracking
+    trackPinterest("checkout", { event_id: eventId });
     setCheckoutState("processing");
 
-    // NOTE: In production, you will fetch a clientSecret from your Next.js API here
-    // For now, we simulate the flawless loading state and success
-    setTimeout(() => {
-      trackPinterest("purchase", { value: 47.77, currency: "USD" });
-      setCheckoutState("success");
-      // Here is where the Resend email trigger will fire from your backend
-    }, 2000);
+    try {
+      // 1. Get the payment intent secret from your server
+      const intentRes = await fetch("/api/create-payment-intent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name }),
+      });
+      const { clientSecret } = await intentRes.json();
+
+      if (!clientSecret) throw new Error("Failed to initialize secure checkout");
+
+      // 2. Confirm the card payment securely without redirecting
+      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement)!,
+          billing_details: { name, email },
+        },
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      if (paymentIntent.status === "succeeded") {
+        // 3. Inform the server to send the email and fire the Pinterest CAPI
+        await fetch("/api/complete-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paymentIntentId: paymentIntent.id,
+            email,
+            name,
+            eventId // Send the exact same ID so Pinterest deduplicates the events
+          }),
+        });
+
+        // 4. Update UI to success state
+        trackPinterest("purchase", { value: 47.77, currency: "USD", event_id: eventId });
+        setCheckoutState("success");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setErrorMessage(err.message || "Payment failed. Please try again.");
+      setCheckoutState("idle");
+    }
   };
 
   return (
@@ -110,6 +155,12 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, setCheckoutSta
           }}/>
         </div>
       </div>
+
+      {errorMessage && (
+        <div className="text-red-500 text-sm font-medium text-center bg-red-50 p-3 rounded-xl border border-red-100">
+          {errorMessage}
+        </div>
+      )}
 
       <button 
         type="submit" 
