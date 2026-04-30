@@ -74,16 +74,31 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
     setCheckoutState("processing");
 
     try {
+      // 1. Fetch Payment Intent securely
       const intentRes = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, name }),
       });
-      const { clientSecret } = await intentRes.json();
 
-      if (!clientSecret) throw new Error("Failed to initialize secure checkout");
+      // Catch HTML error pages (404/500) before they crash the JSON parser
+      const contentType = intentRes.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Unable to connect to the secure payment server. Please contact support.");
+      }
 
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+      const intentData = await intentRes.json();
+
+      if (!intentRes.ok) {
+        throw new Error(intentData.error || "Failed to initialize secure checkout.");
+      }
+
+      if (!intentData.clientSecret) {
+        throw new Error("Invalid response from payment server.");
+      }
+
+      // 2. Confirm Card Payment
+      const { error, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement)!,
           billing_details: { name, email },
@@ -94,8 +109,9 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
         throw new Error(error.message);
       }
 
+      // 3. Complete Order
       if (paymentIntent.status === "succeeded") {
-        await fetch("/api/complete-order", {
+        const completeRes = await fetch("/api/complete-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -106,11 +122,21 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
           }),
         });
 
+        // Graceful error handling for the complete order route
+        const completeContentType = completeRes.headers.get("content-type");
+        if (completeContentType && completeContentType.includes("application/json")) {
+           const completeData = await completeRes.json();
+           if (!completeRes.ok) {
+             console.error("Order completion warning:", completeData.error);
+           }
+        }
+
         trackPinterest("purchase", { value: 47.77, currency: "USD", event_id: eventId });
         setCheckoutState("success");
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("Checkout Error:", err);
+      // Clean, user-friendly error message format
       setErrorMessage(err.message || "Payment failed. Please try again.");
       setCheckoutState("idle");
     }
@@ -153,18 +179,39 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
         </div>
       </div>
 
-      {errorMessage && (
-        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="text-red-500 text-sm font-semibold text-center bg-red-50 p-4 rounded-2xl border border-red-100">
-          {errorMessage}
-        </motion.div>
-      )}
+      {/* Flawless, organized error message container */}
+      <AnimatePresence>
+        {errorMessage && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0, y: -10 }} 
+            animate={{ opacity: 1, height: "auto", y: 0 }} 
+            exit={{ opacity: 0, height: 0, y: -10 }}
+            className="overflow-hidden"
+          >
+            <div className="text-red-500 text-sm font-bold text-center bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center justify-center gap-2">
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {errorMessage}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <button 
         type="submit" 
         disabled={!stripe || checkoutState === "processing"}
         className="w-full py-5 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-full font-bold text-xl hover:from-pink-500 hover:to-rose-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(244,63,94,0.3)] hover:shadow-[0_15px_35px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 duration-300"
       >
-        {checkoutState === "processing" ? "Processing Securely..." : "Get Instant Access"}
+        {checkoutState === "processing" ? (
+          <>
+            <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Processing Securely...
+          </>
+        ) : "Get Instant Access"}
       </button>
 
       <div className="flex flex-col items-center gap-2 text-sm font-semibold text-gray-400">
@@ -174,6 +221,7 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
     </form>
   );
 };
+
 
 // --- MAIN PAGE COMPONENT ---
 export default function EbookSalesPage() {
