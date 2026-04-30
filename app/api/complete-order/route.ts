@@ -28,19 +28,26 @@ export async function POST(request: Request) {
 
     const firstName = name ? name.split(" ")[0] : "There";
 
-    // 2. READ THE PDF SECURELY
-    const pdfPath = path.join(process.cwd(), "public", "the-pattern-you-never-saw.pdf");
+    // 2. READ THE PDF SECURELY (Checks both naming formats)
     let pdfBuffer: Buffer;
-    
     try {
-      pdfBuffer = fs.readFileSync(pdfPath);
-    } catch (fsError) {
-      console.error("Failed to read PDF file from public folder:", fsError);
-      return NextResponse.json({ error: "File delivery error on server." }, { status: 500 });
+      const hyphenPath = path.join(process.cwd(), "public", "the-pattern-you-never-saw.pdf");
+      const spacePath = path.join(process.cwd(), "public", "The Pattern You Never Saw.pdf");
+      
+      if (fs.existsSync(hyphenPath)) {
+        pdfBuffer = fs.readFileSync(hyphenPath);
+      } else if (fs.existsSync(spacePath)) {
+        pdfBuffer = fs.readFileSync(spacePath);
+      } else {
+        throw new Error("PDF file not found in the public folder.");
+      }
+    } catch (fsError: any) {
+      console.error("PDF Read Error:", fsError);
+      return NextResponse.json({ error: "Ebook file missing on server. Rename your PDF to the-pattern-you-never-saw.pdf" }, { status: 500 });
     }
 
-    // 3. SEND THE EMAIL WITH THE ATTACHMENT
-    const emailPromise = resend.emails.send({
+    // 3. SEND THE EMAIL WITH STRICT ERROR CHECKING
+    const emailResult = await resend.emails.send({
       from: "Attract Best Man <attractbestman@vireva.agency>", 
       to: [email],
       subject: "Your Access: The Pattern You Never Saw",
@@ -51,20 +58,29 @@ export async function POST(request: Request) {
           content: pdfBuffer,
         },
       ],
-    }).catch(err => console.error("Resend Email Failed:", err));
+    });
 
-    // 4. ADD CONTACT TO YOUR MARKETING AUDIENCE
-    const listPromise = process.env.RESEND_AUDIENCE_ID ? resend.contacts.create({
-      email: email,
-      firstName: firstName, 
-      unsubscribed: false,
-      audienceId: process.env.RESEND_AUDIENCE_ID,
-    }).catch(err => console.error("Resend List Addition Failed:", err)) : Promise.resolve();
+    if (emailResult.error) {
+      console.error("Resend Email Error:", emailResult.error);
+      return NextResponse.json({ error: `Email Delivery Failed: ${emailResult.error.message}` }, { status: 500 });
+    }
 
-    // Run both operations concurrently
-    await Promise.all([emailPromise, listPromise]);
+    // 4. ADD TO MARKETING AUDIENCE
+    if (process.env.RESEND_AUDIENCE_ID) {
+      const contactResult = await resend.contacts.create({
+        email: email,
+        firstName: firstName, 
+        unsubscribed: false,
+        audienceId: process.env.RESEND_AUDIENCE_ID,
+      });
+      
+      if (contactResult.error) {
+         console.error("Resend Contact Error:", contactResult.error);
+         // We do not fail the whole order just because the marketing list failed
+      }
+    }
 
-    return NextResponse.json({ success: true, message: "Order processed, email sent, and contact added." });
+    return NextResponse.json({ success: true, message: "Order processed and email sent." });
 
   } catch (error: any) {
     console.error("Complete Order Route Failed:", error);

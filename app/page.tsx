@@ -100,11 +100,19 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
       if (error) throw new Error(error.message);
 
       if (paymentIntent.status === "succeeded") {
-        await fetch("/api/complete-order", {
+        const completeRes = await fetch("/api/complete-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ paymentIntentId: paymentIntent.id, email, name, eventId }),
         });
+
+        const completeData = await completeRes.json();
+        
+        // THIS FIXES THE SILENT SUCCESS BUG
+        // If the server fails to read the PDF or Resend fails to send the email, this catches it
+        if (!completeRes.ok) {
+          throw new Error(completeData.error || "Payment succeeded, but email delivery failed.");
+        }
 
         trackPinterest("purchase", { value: 47.77, currency: "USD", event_id: eventId });
         setCheckoutState("success");
