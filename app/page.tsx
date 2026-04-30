@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Star, Lock, ShieldCheck, ArrowRight, ChevronDown, Mail } from "lucide-react";
+import { Check, Star, Lock, ShieldCheck, ArrowRight, ChevronDown, Mail, X } from "lucide-react";
 import Image from "next/image";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
@@ -74,14 +74,12 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
     setCheckoutState("processing");
 
     try {
-      // 1. Fetch Payment Intent securely
       const intentRes = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, name }),
       });
 
-      // Catch HTML error pages (404/500) before they crash the JSON parser
       const contentType = intentRes.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new Error("Unable to connect to the secure payment server. Please contact support.");
@@ -89,15 +87,9 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
 
       const intentData = await intentRes.json();
 
-      if (!intentRes.ok) {
-        throw new Error(intentData.error || "Failed to initialize secure checkout.");
-      }
+      if (!intentRes.ok) throw new Error(intentData.error || "Failed to initialize secure checkout.");
+      if (!intentData.clientSecret) throw new Error("Invalid response from payment server.");
 
-      if (!intentData.clientSecret) {
-        throw new Error("Invalid response from payment server.");
-      }
-
-      // 2. Confirm Card Payment
       const { error, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement)!,
@@ -105,38 +97,20 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
         },
       });
 
-      if (error) {
-        throw new Error(error.message);
-      }
+      if (error) throw new Error(error.message);
 
-      // 3. Complete Order
       if (paymentIntent.status === "succeeded") {
-        const completeRes = await fetch("/api/complete-order", {
+        await fetch("/api/complete-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paymentIntentId: paymentIntent.id,
-            email,
-            name,
-            eventId
-          }),
+          body: JSON.stringify({ paymentIntentId: paymentIntent.id, email, name, eventId }),
         });
-
-        // Graceful error handling for the complete order route
-        const completeContentType = completeRes.headers.get("content-type");
-        if (completeContentType && completeContentType.includes("application/json")) {
-           const completeData = await completeRes.json();
-           if (!completeRes.ok) {
-             console.error("Order completion warning:", completeData.error);
-           }
-        }
 
         trackPinterest("purchase", { value: 47.77, currency: "USD", event_id: eventId });
         setCheckoutState("success");
       }
     } catch (err: any) {
-      console.error("Checkout Error:", err);
-      // Clean, user-friendly error message format
+      console.error(err);
       setErrorMessage(err.message || "Payment failed. Please try again.");
       setCheckoutState("idle");
     }
@@ -179,29 +153,28 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
         </div>
       </div>
 
-      {/* Flawless, organized error message container */}
       <AnimatePresence>
         {errorMessage && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0, y: -10 }} 
-            animate={{ opacity: 1, height: "auto", y: 0 }} 
-            exit={{ opacity: 0, height: 0, y: -10 }}
-            className="overflow-hidden"
-          >
-            <div className="text-red-500 text-sm font-bold text-center bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center justify-center gap-2">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <div className="text-red-500 text-sm font-bold text-center bg-red-50 p-4 rounded-2xl border border-red-100 flex items-center justify-center gap-2 mt-2">
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
               {errorMessage}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* MICRO TRUST SIGNALS */}
+      <div className="flex flex-col gap-2 mt-6 mb-2 p-5 rounded-2xl bg-pink-50/50 border border-pink-100/50">
+        <span className="flex items-center gap-3 text-sm font-bold text-gray-500"><Check className="w-4 h-4 text-green-500"/> Used by 50,000+ women</span>
+        <span className="flex items-center gap-3 text-sm font-bold text-gray-500"><Lock className="w-4 h-4 text-green-500"/> Secure encrypted payment</span>
+        <span className="flex items-center gap-3 text-sm font-bold text-gray-500"><Mail className="w-4 h-4 text-green-500"/> Instant access</span>
+      </div>
+
       <button 
         type="submit" 
         disabled={!stripe || checkoutState === "processing"}
-        className="w-full py-5 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-full font-bold text-xl hover:from-pink-500 hover:to-rose-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_10px_25px_rgba(244,63,94,0.3)] hover:shadow-[0_15px_35px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 duration-300"
+        className="w-full py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-2xl font-bold text-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_25px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_35px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 duration-300 backdrop-blur-md"
       >
         {checkoutState === "processing" ? (
           <>
@@ -211,17 +184,15 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
             </svg>
             Processing Securely...
           </>
-        ) : "Get Instant Access"}
+        ) : "Unlock What He Actually Responds To"}
       </button>
 
-      <div className="flex flex-col items-center gap-2 text-sm font-semibold text-gray-400">
-        <span className="flex items-center gap-1.5"><Lock className="w-4 h-4"/> 256-Bit Encrypted Checkout</span>
-        <span className="flex items-center gap-1.5"><Mail className="w-4 h-4"/> Instant Automated Delivery</span>
+      <div className="text-center mt-4 text-sm font-semibold text-rose-500/80">
+        Most people read this in one night... <br/>and wish they had it months earlier.
       </div>
     </form>
   );
 };
-
 
 // --- MAIN PAGE COMPONENT ---
 export default function EbookSalesPage() {
@@ -234,8 +205,10 @@ export default function EbookSalesPage() {
   const [visibleCtaCount, setVisibleCtaCount] = useState(0);
   const [hasScrolledPastHero, setHasScrolledPastHero] = useState(false);
 
+  // Legal Modal State
+  const [activeModal, setActiveModal] = useState<"none" | "privacy" | "terms">("none");
+
   useEffect(() => {
-    // Pinterest initialization
     if (typeof window !== "undefined") {
       !function(e:any){if(!window.pintrk){window.pintrk=function(){
       window.pintrk.queue.push(Array.prototype.slice.call(arguments))};
@@ -251,7 +224,6 @@ export default function EbookSalesPage() {
       });
     }
 
-    // Intersection Observer for CTAs
     const ctaElements = document.querySelectorAll(".page-cta-button");
     const observer = new IntersectionObserver(
       (entries) => {
@@ -263,18 +235,13 @@ export default function EbookSalesPage() {
             intersectingDelta -= 1;
           }
         });
-        
-        setVisibleCtaCount((prev) => {
-          const newCount = Math.max(0, prev + intersectingDelta);
-          return newCount;
-        });
+        setVisibleCtaCount((prev) => Math.max(0, prev + intersectingDelta));
       },
       { threshold: 0, rootMargin: "-10px 0px -10px 0px" } 
     );
 
     ctaElements.forEach((el) => observer.observe(el));
 
-    // Scroll listener for top of page logic
     const handleScroll = () => {
       const heroSection = document.getElementById("hero-section");
       if (heroSection) {
@@ -285,101 +252,158 @@ export default function EbookSalesPage() {
 
     window.addEventListener("scroll", handleScroll, { passive: true });
 
+    if (activeModal !== "none") {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+    }
+
     return () => {
       observer.disconnect();
       window.removeEventListener("scroll", handleScroll);
+      document.body.style.overflow = "auto";
     };
-  }, []);
+  }, [activeModal]);
 
   const handleCTA = () => {
     trackPinterest("addtocart");
     document.getElementById("checkout-section")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // The sticky button should only show if we have passed the hero AND no other CTA is visible
   const showStickyCta = hasScrolledPastHero && visibleCtaCount === 0;
 
   return (
     <div className="min-h-screen bg-[#FDF8F9] text-[#1D1D1F] font-sans selection:bg-pink-200 selection:text-pink-900 pb-32 overflow-x-hidden antialiased">
       
-      {/* --- MAC-OS STYLE HERO SECTION (SOFT & FEMININE) --- */}
-      <section id="hero-section" className="relative pt-24 pb-20 px-6 overflow-hidden">
-        {/* Soft elegant background glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[600px] opacity-40 pointer-events-none -z-10">
+{/* --- MAC-OS STYLE HERO SECTION --- */}
+      <section id="hero-section" className="relative pt-16 pb-14 md:pt-24 md:pb-20 px-6 overflow-hidden">
+        {/* Soft elegant background glow (Desktop) */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[600px] opacity-40 pointer-events-none -z-10 hidden lg:block">
           <div className="absolute inset-0 bg-gradient-to-tr from-pink-100 via-rose-50 to-transparent blur-[80px] rounded-full mix-blend-multiply"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          {/* Text Content */}
+        {/* Soft mobile gradient background */}
+        <div className="absolute inset-0 -z-10 lg:hidden bg-gradient-to-b from-[#FDF8F9] via-pink-50/40 to-[#FDF8F9]"></div>
+
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-8 lg:gap-16 items-center">
+          
+          {/* Main Column */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="flex flex-col space-y-8 order-2 lg:order-1 lg:col-span-7"
+            className="flex flex-col lg:col-span-7"
           >
-            <div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-balance leading-[1.1]">
-                He Didn’t <span className="text-transparent bg-clip-text bg-gradient-to-br from-pink-400 to-rose-500">“Lose Interest.”</span><br/>
-                You Just Didn’t See The Pattern Yet.
+            {/* 1. Headline */}
+            <div className="mb-2">
+              <h1 className="text-[2.5rem] md:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight text-balance">
+                He Didn’t <span className="text-pink-500">“Lose Interest.”</span><br/>
+                <span className="text-gray-400 font-bold block mt-1">Something shifted.</span>
+                <span className="text-[#1D1D1F]">You just didn’t see it yet.</span>
               </h1>
-              <p className="mt-6 text-lg lg:text-xl text-gray-500 leading-relaxed max-w-lg font-medium text-balance">
-                Understand exactly how men think, pull away, and choose, so you stop guessing, <span className="text-[#1D1D1F] font-bold border-b-2 border-pink-200 pb-0.5">stop overgiving</span>, and finally feel in control.
+            </div>
+
+            {/* 2. Micro emotional line */}
+            <p className="mb-8 text-[15px] md:text-lg text-gray-500 font-semibold tracking-tight">
+              And that’s exactly why it keeps happening.
+            </p>
+
+            {/* 3. IMAGE (MOBILE ONLY - Anchoring the feeling) */}
+            <div className="relative w-full max-w-[320px] mx-auto rounded-[2rem] overflow-hidden shadow-[0_20px_50px_-10px_rgba(244,63,94,0.15)] bg-white border border-white/60 lg:hidden">
+               <Image 
+                  src="/ebook1.jpg" 
+                  alt="Understand Men Ebook" 
+                  width={800}
+                  height={1000}
+                  className="w-full h-auto"
+                  priority
+               />
+              <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-transparent to-transparent pointer-events-none mix-blend-overlay"></div>
+            </div>
+
+            {/* 4. NEW: UNFINISHED PSYCHOLOGICAL LOOP (Pattern Reveal Tease) */}
+            <div className="mt-8 mb-8 text-center sm:text-left max-w-sm sm:max-w-md mx-auto sm:mx-0">
+              <p className="text-base md:text-lg font-bold text-[#1D1D1F] leading-snug">
+                There’s a moment where his behavior shifts.
+              </p>
+              <p className="text-sm md:text-base text-gray-500 mt-2 font-medium leading-relaxed">
+                Not randomly. Not emotionally. <br className="hidden sm:block" />
+                It follows a pattern most women never notice until it’s too late.
               </p>
             </div>
 
-            <ul className="space-y-4">
-              {[
-                "Know what to say when he goes distant (without sounding desperate)",
-                "Recognize the signs early, before you get emotionally attached",
-                "Stop replaying conversations in your head"
-              ].map((bullet, i) => (
-                <li key={i} className="flex items-start gap-4 text-[#1D1D1F] font-semibold text-base lg:text-lg">
-                  <div className="w-6 h-6 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
-                    <Check className="w-4 h-4 text-pink-500" />
-                  </div>
-                  <span className="leading-snug">{bullet}</span>
-                </li>
-              ))}
+            {/* 5. Bullets (Upgraded to deepen curiosity) */}
+            <ul className="space-y-3 md:space-y-4 text-[15px] md:text-lg font-semibold mb-8">
+              <li className="flex items-start gap-3 md:gap-4 text-[#1D1D1F]">
+                <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                  <Check className="w-3 h-3 md:w-4 md:h-4 text-pink-500" />
+                </div>
+                <span className="leading-snug">Why he was consistent... then suddenly distant</span>
+              </li>
+              <li className="flex items-start gap-3 md:gap-4 text-[#1D1D1F]">
+                <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                  <Check className="w-3 h-3 md:w-4 md:h-4 text-pink-500" />
+                </div>
+                <span className="leading-snug">What actually makes him pull away (it’s not what you think)</span>
+              </li>
+              <li className="flex items-start gap-3 md:gap-4 text-[#1D1D1F]">
+                <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                  <Check className="w-3 h-3 md:w-4 md:h-4 text-pink-500" />
+                </div>
+                <span className="leading-snug">The small mistake that slowly turns attraction off</span>
+              </li>
             </ul>
 
-            <div className="pt-4">
-              {/* Added .page-cta-button class for intersection observer */}
+            {/* 6. CTA & 7. Trust row */}
+            <div className="pt-2 relative">
+              <div className="absolute inset-0 bg-pink-200 blur-2xl opacity-40 rounded-full hidden sm:block"></div>
               <button 
                 onClick={handleCTA}
-                className="page-cta-button w-full sm:w-auto px-12 py-5 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-full font-bold text-xl shadow-[0_15px_30px_rgba(244,63,94,0.25)] hover:shadow-[0_20px_40px_rgba(244,63,94,0.4)] hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-3"
+                className="page-cta-button relative z-10 w-full sm:w-auto px-8 md:px-10 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-lg md:text-xl shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_30px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_40px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-3"
               >
-                Access The System Now <ArrowRight className="w-5 h-5" />
+                Understand What Actually Happened
               </button>
-              <div className="mt-5 flex flex-col sm:flex-row items-center gap-4 text-sm font-semibold text-gray-400">
-                <span className="flex items-center gap-2"><Lock className="w-4 h-4" /> Secure checkout</span>
-                <span className="hidden sm:inline">•</span>
-                <span className="flex items-center gap-2">Instant access</span>
-                <span className="hidden sm:inline">•</span>
-                <span className="flex items-center gap-2">Risk-free</span>
+              <p className="text-xs md:text-sm text-gray-400 mt-3 text-center sm:text-left font-medium">
+                Instant access • No guessing anymore
+              </p>
+              
+              <div className="mt-5 flex flex-wrap justify-center sm:justify-start gap-3 text-[11px] md:text-xs text-gray-400 font-semibold">
+                <span>50,000+ women</span>
+                <span>•</span>
+                <span>4.8★ rating</span>
+                <span>•</span>
+                <span>365-day guarantee</span>
               </div>
             </div>
           </motion.div>
 
-          {/* Rendered Local Image */}
+          {/* Actual Product Image (Desktop Only) */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
-            className="relative order-1 lg:order-2 lg:col-span-5 w-full flex justify-center"
+            className="hidden lg:flex relative lg:col-span-5 w-full justify-center"
           >
-            <div className="relative aspect-[4/5] w-full max-w-[420px] rounded-[2.5rem] overflow-hidden shadow-[0_30px_60px_-15px_rgba(244,63,94,0.15)] bg-white border border-white/60">
+            <div className="relative w-full max-w-[500px] rounded-[2.5rem] overflow-hidden shadow-[0_40px_80px_-20px_rgba(244,63,94,0.2)] bg-white border border-white/60">
                <Image 
                   src="/ebook1.jpg" 
                   alt="Understand Men Ebook" 
-                  fill 
-                  className="object-cover"
+                  width={800}
+                  height={1000}
+                  className="w-full h-auto"
                   priority
                />
               <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-transparent to-transparent pointer-events-none mix-blend-overlay"></div>
             </div>
           </motion.div>
+
         </div>
       </section>
+
+
+
+
+
 
       {/* --- PAIN / IDENTIFICATION --- */}
       <section className="py-24 px-6 bg-white relative z-10 rounded-[3rem] shadow-sm max-w-[96%] mx-auto my-12 border border-pink-50">
@@ -406,7 +430,7 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-      {/* --- REVIEWS SECTION (DUAL MARQUEE) --- */}
+      {/* --- REVIEWS SECTION --- */}
       <section className="py-28 bg-[#FFF0F3]/40 overflow-hidden relative">
         <div className="max-w-4xl mx-auto text-center px-6 mb-16">
           <span className="px-5 py-2 bg-white text-pink-500 text-sm font-extrabold tracking-widest uppercase rounded-full mb-6 inline-block shadow-sm border border-pink-100">Real Results</span>
@@ -418,7 +442,6 @@ export default function EbookSalesPage() {
         <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-[#FDF8F9] to-transparent z-10 pointer-events-none"></div>
 
         <div className="flex flex-col gap-6">
-          {/* Top Marquee */}
           <div className="flex whitespace-nowrap">
             <motion.div animate={{ x: ["0%", "-50%"] }} transition={{ repeat: Infinity, ease: "linear", duration: 40 }} className="flex gap-6 px-4">
               {[...REVIEWS_TOP, ...REVIEWS_TOP].map((review, i) => (
@@ -445,7 +468,6 @@ export default function EbookSalesPage() {
             </motion.div>
           </div>
 
-          {/* Bottom Marquee */}
           <div className="flex whitespace-nowrap">
             <motion.div animate={{ x: ["-50%", "0%"] }} transition={{ repeat: Infinity, ease: "linear", duration: 45 }} className="flex gap-6 px-4">
               {[...REVIEWS_BOTTOM, ...REVIEWS_BOTTOM].map((review, i) => (
@@ -474,7 +496,7 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-      {/* --- REFRAME SECTION (SOFT & LIGHT) --- */}
+      {/* --- REFRAME SECTION --- */}
       <section className="py-24 px-6 bg-[#FDF8F9]">
         <div className="max-w-4xl mx-auto text-center space-y-10">
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-[#1D1D1F]">
@@ -488,29 +510,57 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-      {/* --- WHAT'S INSIDE (SOFT GLASSMORPHISM CARDS) --- */}
-      <section className="py-20 px-6 bg-[#FDF8F9]">
+      {/* --- WHAT'S INSIDE (UPGRADED LIQUID GLASS) --- */}
+      <section className="py-24 px-6 bg-[#FDF8F9]">
         <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16 space-y-6">
+            <p className="text-pink-500 font-extrabold tracking-widest uppercase text-sm">
+              You don't need more effort. You need clarity.
+            </p>
+            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#1D1D1F]">
+              What You’ll Finally Understand
+            </h2>
+            <p className="text-xl text-gray-500 font-medium">
+              Not advice. Not guesses. <br className="hidden md:block"/>Patterns you’ll start seeing immediately.
+            </p>
+          </div>
+
           <div className="grid md:grid-cols-2 gap-8">
             {[
-              { num: "1", title: "The Psychology", desc: "Why men pull away, and why chasing makes it worse" },
-              { num: "2", title: "Exact Words", desc: "What to say in moments that usually push him away" },
-              { num: "3", title: "Early Signals", desc: "How to know within days if he’s serious" },
-              { num: "4", title: "The Structure", desc: "A calm, grounded way to handle any situation" }
+              { num: "01", title: "Why He Changed And What You Didn’t See", desc: "The exact moment attraction shifts... and why most women only realize it when it’s already too late." },
+              { num: "02", title: "What To Say When He Pulls Away", desc: "The difference between pushing him further away... and making him come back without chasing." },
+              { num: "03", title: "How To Know If He’s Serious (Early)", desc: "The small signals that reveal everything within days, before you invest months." },
+              { num: "04", title: "How To Stay In Control (Without Overthinking)", desc: "A simple way to respond calmly in any situation... without losing your position." }
             ].map((card, i) => (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.6, delay: i * 0.1 }}
-                key={i} 
-                className="bg-white/80 backdrop-blur-xl border border-pink-50 p-10 rounded-[2.5rem] shadow-[0_10px_40px_rgba(244,63,94,0.06)] hover:shadow-[0_15px_50px_rgba(244,63,94,0.1)] transition-all duration-500"
+                key={i}
+                className="group relative bg-white/60 backdrop-blur-3xl border border-white p-10 rounded-[2.5rem] shadow-[0_10px_30px_rgba(244,63,94,0.05)] hover:-translate-y-[6px] hover:shadow-[0_20px_50px_rgba(244,63,94,0.15)] hover:border-pink-300/50 transition-all duration-500 overflow-hidden"
               >
-                <div className="text-sm font-extrabold text-pink-400 tracking-widest uppercase mb-4">Module {card.num}</div>
-                <h3 className="text-2xl font-bold mb-3 text-[#1D1D1F]">{card.title}</h3>
-                <p className="text-gray-500 text-lg font-medium leading-relaxed">{card.desc}</p>
+                <div className="absolute inset-0 bg-gradient-to-tr from-pink-50/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                <div className="relative z-10">
+                  <div className="text-sm font-extrabold text-pink-300 tracking-widest mb-4">{card.num}</div>
+                  <h3 className="text-2xl font-extrabold mb-4 text-[#1D1D1F] leading-tight group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-[#1D1D1F] group-hover:to-pink-600 transition-all">{card.title}</h3>
+                  <p className="text-gray-500 text-lg font-medium leading-relaxed">{card.desc}</p>
+                </div>
               </motion.div>
             ))}
+          </div>
+
+          <div className="text-center mt-16 space-y-8">
+            <p className="text-lg font-bold text-[#1D1D1F] italic">
+              Most women don’t realize this until it’s too late.
+            </p>
+            <button
+              onClick={handleCTA}
+              className="page-cta-button px-12 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-xl shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_30px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_40px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300 inline-flex items-center justify-center gap-3"
+            >
+              Get Instant Access
+            </button>
           </div>
         </div>
       </section>
@@ -531,9 +581,9 @@ export default function EbookSalesPage() {
           <div className="pt-12">
             <button 
               onClick={handleCTA}
-              className="page-cta-button px-10 py-5 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-full font-bold text-xl shadow-[0_10px_30px_rgba(244,63,94,0.25)] hover:shadow-[0_15px_40px_rgba(244,63,94,0.4)] hover:scale-[1.02] transition-all duration-300"
+              className="page-cta-button px-10 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-xl shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_30px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_40px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300"
             >
-              Get Instant Access
+              Access The System He Can’t Ignore
             </button>
           </div>
         </div>
@@ -548,12 +598,13 @@ export default function EbookSalesPage() {
               <span className="text-3xl text-gray-400 line-through font-bold">$67</span>
               <span className="text-6xl font-extrabold tracking-tighter text-pink-500">$47.77</span>
             </div>
-            <p className="text-lg text-gray-500 font-semibold mb-6">
-              A small decision compared to months of emotional confusion.
-            </p>
-            <p className="text-base text-[#1D1D1F] font-semibold bg-pink-100/50 py-3 px-6 rounded-full inline-block">
-              Less than what most people spend trying to “fix” confusion that could’ve been avoided.
-            </p>
+            
+            <div className="text-lg text-[#1D1D1F] font-semibold bg-pink-100/50 py-4 px-8 rounded-3xl inline-block text-left border border-pink-100">
+              <span className="block text-center text-pink-500 font-bold mb-2">This isn’t $47.77 for a book.</span>
+              It’s the difference between:<br/>
+              <span className="text-gray-500 line-through decoration-gray-300">Overthinking every message</span><br/>
+              Or knowing exactly what to say.
+            </div>
           </div>
 
           <div className="bg-white border border-pink-100 rounded-[2.5rem] p-8 md:p-10 shadow-[0_20px_50px_rgba(244,63,94,0.08)] relative z-10">
@@ -573,7 +624,6 @@ export default function EbookSalesPage() {
               ) : (
                 <motion.div exit={{ opacity: 0 }}>
                   <Elements stripe={stripePromise}>
-                    {/* The form acts as a CTA area, so we tag it for the observer */}
                     <div className="page-cta-button">
                       <CheckoutForm 
                         email={email} 
@@ -641,10 +691,13 @@ export default function EbookSalesPage() {
           </p>
           <button 
             onClick={handleCTA}
-            className="page-cta-button px-10 py-5 bg-gradient-to-r from-pink-400 to-rose-400 text-white rounded-full font-bold text-lg shadow-[0_10px_25px_rgba(244,63,94,0.25)] hover:shadow-[0_15px_35px_rgba(244,63,94,0.4)] hover:scale-[1.02] transition-all duration-300"
+            className="page-cta-button px-10 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-lg shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_25px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_35px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300"
           >
             Get Instant Access Now
           </button>
+          <div className="mt-6 text-sm font-semibold text-rose-500/80">
+            Most people read this in one night... <br/>and wish they had it months earlier.
+          </div>
         </div>
       </section>
 
@@ -674,17 +727,109 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-      {/* --- FOOTER --- */}
-      <footer className="pt-10 pb-32 border-t border-pink-50 bg-[#FDF8F9] text-center text-xs font-bold tracking-widest uppercase text-gray-400">
-        <div className="flex justify-center items-center gap-6 mb-5">
-          <a href="#" className="hover:text-pink-400 transition-colors">Privacy Policy</a>
+      {/* --- FOOTER & LEGAL MODALS --- */}
+      <footer className="pt-6 pb-24 border-t border-[#1F0E13] bg-[#0A0406] text-center text-[10px] font-bold tracking-widest uppercase text-pink-900/60">
+        <div className="flex justify-center items-center gap-6 mb-3">
+          <button onClick={() => setActiveModal("privacy")} className="hover:text-pink-400 transition-colors uppercase tracking-widest">Privacy Policy</button>
           <span>·</span>
-          <a href="#" className="hover:text-pink-400 transition-colors">Terms of Service</a>
+          <button onClick={() => setActiveModal("terms")} className="hover:text-pink-400 transition-colors uppercase tracking-widest">Terms of Service</button>
         </div>
         <p>© 2026 Attract Best Man. All rights reserved.</p>
       </footer>
 
-      {/* --- STICKY BOTTOM CTA (SMART LOGIC) --- */}
+      {/* LEGAL MODALS (APPLE GLASSMORPHISM) */}
+      <AnimatePresence>
+        {activeModal !== "none" && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 bg-black/30 backdrop-blur-md"
+              onClick={() => setActiveModal("none")}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-2xl bg-white/90 backdrop-blur-3xl border border-white/50 p-8 md:p-12 rounded-[2.5rem] shadow-2xl max-h-[85vh] overflow-y-auto"
+            >
+              <button 
+                onClick={() => setActiveModal("none")}
+                className="absolute top-6 right-6 w-10 h-10 bg-gray-100 hover:bg-rose-100 text-gray-500 hover:text-rose-500 rounded-full flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {activeModal === "privacy" && (
+                <div className="space-y-6 text-gray-600 font-medium leading-relaxed">
+                  <h3 className="text-3xl font-extrabold text-[#1D1D1F] mb-8">Privacy Policy</h3>
+                  <p className="text-sm text-gray-400 uppercase tracking-widest font-bold">Last updated: April 30, 2026</p>
+                  <p>At AttractBestMan.com, your privacy matters.</p>
+                  <p>We collect only the information necessary to provide you with a smooth and secure experience.</p>
+                  
+                  <h4 className="text-xl font-bold text-[#1D1D1F] pt-4">Information We Collect:</h4>
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li>Name and email address (for order delivery)</li>
+                    <li>Payment information (processed securely via Stripe, we do not store card details)</li>
+                    <li>Basic usage data to improve our website</li>
+                  </ul>
+
+                  <h4 className="text-xl font-bold text-[#1D1D1F] pt-4">How We Use Your Information:</h4>
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li>To deliver your purchase instantly</li>
+                    <li>To communicate important updates</li>
+                    <li>To improve your experience</li>
+                  </ul>
+                  
+                  <p>We do not sell, rent, or share your personal information with third parties.</p>
+                  <p>Payments are processed securely through trusted providers, and all data is encrypted.</p>
+                  <p>You can request deletion of your data at any time by contacting support.</p>
+                  <p>By using this site, you agree to this policy.</p>
+                  
+                  <div className="pt-6 border-t border-gray-100">
+                    <p className="font-bold text-[#1D1D1F]">Contact:</p>
+                    <p className="text-pink-500">support@attractbestman.com</p>
+                  </div>
+                </div>
+              )}
+
+              {activeModal === "terms" && (
+                <div className="space-y-6 text-gray-600 font-medium leading-relaxed">
+                  <h3 className="text-3xl font-extrabold text-[#1D1D1F] mb-8">Terms of Service</h3>
+                  <p className="text-sm text-gray-400 uppercase tracking-widest font-bold">Last updated: April 30, 2026</p>
+                  <p>By accessing AttractBestMan.com, you agree to the following terms:</p>
+                  
+                  <h4 className="text-xl font-bold text-[#1D1D1F] pt-4">Product</h4>
+                  <p>This is a digital product. Access is delivered instantly after purchase.</p>
+
+                  <h4 className="text-xl font-bold text-[#1D1D1F] pt-4">Payments</h4>
+                  <p>All payments are securely processed through Stripe and other providers.</p>
+
+                  <h4 className="text-xl font-bold text-[#1D1D1F] pt-4">Refund Policy</h4>
+                  <p>We offer a 365-day money-back guarantee.</p>
+                  <p>If you are not satisfied, you may request a refund.</p>
+
+                  <h4 className="text-xl font-bold text-[#1D1D1F] pt-4">Usage</h4>
+                  <p>This product is for personal use only. Redistribution or resale is not allowed.</p>
+
+                  <h4 className="text-xl font-bold text-[#1D1D1F] pt-4">Disclaimer</h4>
+                  <p>This product provides educational content. Results may vary depending on individual circumstances.</p>
+                  
+                  <div className="pt-6 border-t border-gray-100">
+                    <p className="font-bold text-[#1D1D1F]">Contact:</p>
+                    <p className="text-pink-500">support@attractbestman.com</p>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- STICKY BOTTOM CTA (SMART LOGIC & GLOWY GLASS) --- */}
       <AnimatePresence>
         {showStickyCta && (
           <motion.div 
@@ -696,9 +841,10 @@ export default function EbookSalesPage() {
           >
             <button 
               onClick={handleCTA}
-              className="pointer-events-auto w-full sm:w-auto px-10 py-5 bg-white/90 backdrop-blur-xl border border-pink-100 text-[#1D1D1F] rounded-full font-bold text-lg shadow-[0_15px_40px_rgba(244,63,94,0.15)] hover:bg-pink-50 hover:scale-[1.02] transition-all duration-300 flex items-center justify-center gap-2"
+              className="pointer-events-auto w-full sm:w-auto px-10 py-5 bg-white/70 backdrop-blur-3xl border border-white/60 text-[#1D1D1F] rounded-full font-bold text-lg shadow-[0_15px_40px_rgba(244,63,94,0.15)] hover:bg-white/95 hover:shadow-[0_0_30px_rgba(244,63,94,0.4),0_10px_40px_rgba(244,63,94,0.2)] hover:border-pink-300 hover:text-pink-600 hover:scale-[1.02] transition-all duration-500 flex items-center justify-center gap-2 relative overflow-hidden group"
             >
-              Access The System Now <span className="text-pink-500 ml-1">- $47.77</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-100/0 via-pink-100/50 to-pink-100/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
+              <span className="relative z-10 flex items-center gap-2">Unlock It Now <span className="text-pink-500 ml-1">- $47.77</span></span>
             </button>
           </motion.div>
         )}
