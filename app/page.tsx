@@ -210,17 +210,17 @@ export default function EbookSalesPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // Wrapped in standard parentheses to pass strict TypeScript build
+      // Bypassing strict TypeScript by casting window as any
       (function(e: any) {
-        if (!window.pintrk) {
-          window.pintrk = function() {
-            window.pintrk.queue.push(Array.prototype.slice.call(arguments));
+        if (!(window as any).pintrk) {
+          (window as any).pintrk = function() {
+            (window as any).pintrk.queue.push(Array.prototype.slice.call(arguments));
           };
-          var n = window.pintrk;
+          var n = (window as any).pintrk;
           n.queue = [];
           n.version = "3.0";
           var t = document.createElement("script");
-          t.async = true; // Changed from !0 to true
+          t.async = true;
           t.src = e;
           var r = document.getElementsByTagName("script")[0];
           r?.parentNode?.insertBefore(t, r);
@@ -232,6 +232,7 @@ export default function EbookSalesPage() {
         (window as any).pintrk("page");
       });
     }
+// ... rest of the useEffect stays the same
 
     const ctaElements = document.querySelectorAll(".page-cta-button");
     const observer = new IntersectionObserver(
