@@ -6,15 +6,13 @@ import { Check, Star, Lock, ShieldCheck, ArrowRight, ChevronDown, Mail, X } from
 import Image from "next/image";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Analytics } from "@vercel/analytics/next";
 
 // --- STRIPE SETUP ---
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // --- PINTEREST TRACKING SETUP ---
-const TAG_IDS = [
-  "2612612515475", "TAG_ID_2", "TAG_ID_3", "TAG_ID_4", "TAG_ID_5",
-  "TAG_ID_6", "TAG_ID_7", "TAG_ID_8", "TAG_ID_9", "TAG_ID_10"
-];
+const TAG_IDS = ["2612612515475"];
 
 const trackPinterest = (event: string, data?: any) => {
   if (typeof window !== "undefined" && (window as any).pintrk) {
@@ -70,7 +68,9 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
 
     setErrorMessage(null);
     const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    trackPinterest("checkout", { event_id: eventId });
+    
+    // 1. HIGH INTENT PINTEREST EVENT (User clicks pay, card processing begins)
+    trackPinterest("custom", { event_name: "initiate_checkout", event_id: eventId });
     setCheckoutState("processing");
 
     try {
@@ -108,13 +108,18 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
 
         const completeData = await completeRes.json();
         
-        // THIS FIXES THE SILENT SUCCESS BUG
-        // If the server fails to read the PDF or Resend fails to send the email, this catches it
         if (!completeRes.ok) {
           throw new Error(completeData.error || "Payment succeeded, but email delivery failed.");
         }
 
-        trackPinterest("purchase", { value: 47.77, currency: "USD", event_id: eventId });
+        // 2. ACTUAL SALE PINTEREST EVENT (Official 'checkout' event sent after Stripe and Email succeed)
+        trackPinterest("checkout", { 
+          value: 47.77, 
+          currency: "USD",
+          order_id: paymentIntent.id,
+          event_id: eventId 
+        });
+
         setCheckoutState("success");
       }
     } catch (err: any) {
@@ -282,7 +287,12 @@ export default function EbookSalesPage() {
   }, [activeModal]);
 
   const handleCTA = () => {
-    trackPinterest("addtocart");
+    // PRE-INTENT PINTEREST EVENT (Fires when they click the CTA button to scroll to payment)
+    trackPinterest("addtocart", { 
+      value: 47.77, 
+      currency: "USD", 
+      line_items: [{ product_name: "The Pattern You Never Saw", product_price: 47.77 }]
+    });
     document.getElementById("checkout-section")?.scrollIntoView({ behavior: "smooth" });
   };
 
@@ -879,7 +889,8 @@ export default function EbookSalesPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
+      
+      <Analytics />
     </div>
   );
 }

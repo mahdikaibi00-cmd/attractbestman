@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -13,8 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Safe Checkout",
-  description: "",
+  title: "The Pattern You Never Saw | Secure Access",
+  description: "He didn't lose interest. Something shifted. Discover exactly why he pulled away and what to do next. Unlock the blueprint to stop overthinking and get your control back.",
+  openGraph: {
+    title: "The Pattern You Never Saw",
+    description: "Discover exactly why he pulled away and what to do next.",
+    images: ["/ebook1.jpg"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Pattern You Never Saw",
+    description: "Discover exactly why he pulled away and what to do next.",
+    images: ["/ebook1.jpg"],
+  },
 };
 
 export default function RootLayout({
@@ -28,6 +40,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
+        <Analytics />
       </body>
     </html>
   );
