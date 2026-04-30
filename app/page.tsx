@@ -8,7 +8,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
 // --- STRIPE SETUP ---
-const stripePromise = loadStripe("pk_live_51OVFnPA96PPqJRyui3iXLK5bLOm9pCmvddRgIHY1UTiEDprJ5PYRfT3NlB5fNLqaEavooguwV94Yoxo9bTEgiSy800U2NXnXUe");
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // --- PINTEREST TRACKING SETUP ---
 const TAG_IDS = [
@@ -45,17 +45,17 @@ const REVIEWS_BOTTOM = [
 
 // --- DATA: FAQS ---
 const FAQS = [
-  { question: "Is this book about manipulating men?", answer: "No.\n\nThis isn’t about tricks or games.\nIt’s about understanding behavior, so you stop reacting emotionally and start responding with clarity.\nNothing here forces someone to like you.\n\nIt simply helps you stop pushing the right people away and stop investing in the wrong ones." },
-  { question: "Won’t the texts feel weird to send?", answer: "No, and that’s the point.\nEverything is designed to feel natural, calm, and grounded.\n\nNot scripted. Not forced.\nYou’ll recognize the difference immediately:\n\nless pressure, less overthinking... more control." },
-  { question: "What if my situation isn’t in the book?", answer: "It doesn’t need to be.\nBecause this isn’t a collection of random scenarios, it’s a pattern.\nOnce you understand the underlying behavior,\n\nyou’ll know how to handle situations even if they look different on the surface." },
-  { question: "I’m already in a relationship. Is this still for me?", answer: "Yes.\nIn fact, this is where it becomes even more powerful.\nYou’ll start seeing dynamics you didn’t notice before,\n\nand understand why certain patterns keep repeating." },
-  { question: "Why should I take dating advice from a man?", answer: "Because you’re trying to understand men.\nThis isn’t theory.\n\nIt’s perspective from the other side, translated into something you can actually use.\nNot opinions. Patterns." },
-  { question: "When do I get access?", answer: "Immediately after purchase.\nNo waiting, no shipping, you’ll receive everything instantly." },
+  { question: "Is this book about manipulating men?", answer: "No.\n\nThis isn't about tricks or games.\nIt's about understanding behavior, so you stop reacting emotionally and start responding with clarity.\nNothing here forces someone to like you.\n\nIt simply helps you stop pushing the right people away and stop investing in the wrong ones." },
+  { question: "Won't the texts feel weird to send?", answer: "No, and that's the point.\nEverything is designed to feel natural, calm, and grounded.\n\nNot scripted. Not forced.\nYou'll recognize the difference immediately:\n\nless pressure, less overthinking... more control." },
+  { question: "What if my situation isn't in the book?", answer: "It doesn't need to be.\nBecause this isn't a collection of random scenarios, it's a pattern.\nOnce you understand the underlying behavior,\n\nyou'll know how to handle situations even if they look different on the surface." },
+  { question: "I'm already in a relationship. Is this still for me?", answer: "Yes.\nIn fact, this is where it becomes even more powerful.\nYou'll start seeing dynamics you didn't notice before,\n\nand understand why certain patterns keep repeating." },
+  { question: "Why should I take dating advice from a man?", answer: "Because you're trying to understand men.\nThis isn't theory.\n\nIt's perspective from the other side, translated into something you can actually use.\nNot opinions. Patterns." },
+  { question: "When do I get access?", answer: "Immediately after purchase.\nNo waiting, no shipping, you'll receive everything instantly." },
   { question: "How long until I see a difference?", answer: "Most women notice it almost immediately.\nNot because something magical happens,\n\nbut because you stop second-guessing yourself.\nAnd that changes everything." },
   { question: "Is my payment secure?", answer: "Yes.\nAll payments are encrypted and processed through secure providers.\n\nYour information is protected at every step." },
-  { question: "What if I don’t like it?", answer: "You’re covered by a 365-day money-back guarantee.\nIf it doesn’t change how you understand men,\n\njust ask for a refund.\nNo questions." },
-  { question: "I’ve read other dating books. Why is this one different?", answer: "Most books give advice.\nThis gives you understanding.\nInstead of telling you what to do,\n\nit shows you why things happen, so you don’t have to rely on guesswork again." },
-  { question: "I have a question about my order.", answer: "You can contact support anytime, and you’ll get a response quickly.\nWe make sure you’re taken care of." },
+  { question: "What if I don't like it?", answer: "You're covered by a 365-day money-back guarantee.\nIf it doesn't change how you understand men,\n\njust ask for a refund.\nNo questions." },
+  { question: "I've read other dating books. Why is this one different?", answer: "Most books give advice.\nThis gives you understanding.\nInstead of telling you what to do,\n\nit shows you why things happen, so you don't have to rely on guesswork again." },
+  { question: "I have a question about my order.", answer: "You can contact support anytime, and you'll get a response quickly.\nWe make sure you're taken care of." },
 ];
 
 // --- CHECKOUT FORM COMPONENT ---
@@ -233,7 +233,6 @@ export default function EbookSalesPage() {
       });
     }
 
-
     const ctaElements = document.querySelectorAll(".page-cta-button");
     const observer = new IntersectionObserver(
       (entries) => {
@@ -285,7 +284,7 @@ export default function EbookSalesPage() {
   return (
     <div className="min-h-screen bg-[#FDF8F9] text-[#1D1D1F] font-sans selection:bg-pink-200 selection:text-pink-900 pb-32 overflow-x-hidden antialiased">
       
-{/* --- MAC-OS STYLE HERO SECTION --- */}
+      {/* --- MAC-OS STYLE HERO SECTION --- */}
       <section id="hero-section" className="relative pt-16 pb-14 md:pt-24 md:pb-20 px-6 overflow-hidden">
         {/* Soft elegant background glow (Desktop) */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[600px] opacity-40 pointer-events-none -z-10 hidden lg:block">
@@ -307,15 +306,15 @@ export default function EbookSalesPage() {
             {/* 1. Headline */}
             <div className="mb-2">
               <h1 className="text-[2.5rem] md:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight text-balance">
-                He Didn’t <span className="text-pink-500">“Lose Interest.”</span><br/>
+                He Didn't <span className="text-pink-500">“Lose Interest.”</span><br/>
                 <span className="text-gray-400 font-bold block mt-1">Something shifted.</span>
-                <span className="text-[#1D1D1F]">You just didn’t see it yet.</span>
+                <span className="text-[#1D1D1F]">You just didn't see it yet.</span>
               </h1>
             </div>
 
             {/* 2. Micro emotional line */}
             <p className="mb-8 text-[15px] md:text-lg text-gray-500 font-semibold tracking-tight">
-              And that’s exactly why it keeps happening.
+              And that's exactly why it keeps happening.
             </p>
 
             {/* 3. IMAGE (MOBILE ONLY - Anchoring the feeling) */}
@@ -334,11 +333,11 @@ export default function EbookSalesPage() {
             {/* 4. NEW: UNFINISHED PSYCHOLOGICAL LOOP (Pattern Reveal Tease) */}
             <div className="mt-8 mb-8 text-center sm:text-left max-w-sm sm:max-w-md mx-auto sm:mx-0">
               <p className="text-base md:text-lg font-bold text-[#1D1D1F] leading-snug">
-                There’s a moment where his behavior shifts.
+                There's a moment where his behavior shifts.
               </p>
               <p className="text-sm md:text-base text-gray-500 mt-2 font-medium leading-relaxed">
                 Not randomly. Not emotionally. <br className="hidden sm:block" />
-                It follows a pattern most women never notice until it’s too late.
+                It follows a pattern most women never notice until it's too late.
               </p>
             </div>
 
@@ -354,7 +353,7 @@ export default function EbookSalesPage() {
                 <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
                   <Check className="w-3 h-3 md:w-4 md:h-4 text-pink-500" />
                 </div>
-                <span className="leading-snug">What actually makes him pull away (it’s not what you think)</span>
+                <span className="leading-snug">What actually makes him pull away (it's not what you think)</span>
               </li>
               <li className="flex items-start gap-3 md:gap-4 text-[#1D1D1F]">
                 <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
@@ -410,11 +409,6 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-
-
-
-
-
       {/* --- PAIN / IDENTIFICATION --- */}
       <section className="py-24 px-6 bg-white relative z-10 rounded-[3rem] shadow-sm max-w-[96%] mx-auto my-12 border border-pink-50">
         <div className="max-w-3xl mx-auto text-center space-y-12">
@@ -425,7 +419,7 @@ export default function EbookSalesPage() {
             <p>Messages feel easy. Natural.</p>
             <p>Then something shifts.</p>
             <p>He replies slower. Cancels. Feels distant.</p>
-            <p className="text-3xl md:text-4xl font-extrabold pt-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-400">And suddenly... you’re the one trying to “figure it out.”</p>
+            <p className="text-3xl md:text-4xl font-extrabold pt-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-400">And suddenly... you're the one trying to “figure it out.”</p>
           </div>
 
           <div className="pt-12 mt-12 border-t border-pink-50">
@@ -510,8 +504,8 @@ export default function EbookSalesPage() {
       <section className="py-24 px-6 bg-[#FDF8F9]">
         <div className="max-w-4xl mx-auto text-center space-y-10">
           <h2 className="text-4xl md:text-5xl font-extrabold tracking-tighter text-[#1D1D1F]">
-            Men aren’t confusing.<br/>
-            <span className="text-pink-400 mt-3 block">They’re just predictable in ways no one explained to you.</span>
+            Men aren't confusing.<br/>
+            <span className="text-pink-400 mt-3 block">They're just predictable in ways no one explained to you.</span>
           </h2>
           <p className="text-xl md:text-2xl font-semibold leading-relaxed max-w-2xl mx-auto text-gray-600">
             Once you see the pattern, everything changes: <br/><br/>
@@ -528,18 +522,18 @@ export default function EbookSalesPage() {
               You don't need more effort. You need clarity.
             </p>
             <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#1D1D1F]">
-              What You’ll Finally Understand
+              What You'll Finally Understand
             </h2>
             <p className="text-xl text-gray-500 font-medium">
-              Not advice. Not guesses. <br className="hidden md:block"/>Patterns you’ll start seeing immediately.
+              Not advice. Not guesses. <br className="hidden md:block"/>Patterns you'll start seeing immediately.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             {[
-              { num: "01", title: "Why He Changed And What You Didn’t See", desc: "The exact moment attraction shifts... and why most women only realize it when it’s already too late." },
+              { num: "01", title: "Why He Changed And What You Didn't See", desc: "The exact moment attraction shifts... and why most women only realize it when it's already too late." },
               { num: "02", title: "What To Say When He Pulls Away", desc: "The difference between pushing him further away... and making him come back without chasing." },
-              { num: "03", title: "How To Know If He’s Serious (Early)", desc: "The small signals that reveal everything within days, before you invest months." },
+              { num: "03", title: "How To Know If He's Serious (Early)", desc: "The small signals that reveal everything within days, before you invest months." },
               { num: "04", title: "How To Stay In Control (Without Overthinking)", desc: "A simple way to respond calmly in any situation... without losing your position." }
             ].map((card, i) => (
               <motion.div
@@ -560,41 +554,71 @@ export default function EbookSalesPage() {
               </motion.div>
             ))}
           </div>
-
-          <div className="text-center mt-16 space-y-8">
-            <p className="text-lg font-bold text-[#1D1D1F] italic">
-              Most women don’t realize this until it’s too late.
-            </p>
-            <button
-              onClick={handleCTA}
-              className="page-cta-button px-12 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-xl shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_30px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_40px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300 inline-flex items-center justify-center gap-3"
-            >
-              Get Instant Access
-            </button>
-          </div>
         </div>
       </section>
 
-      {/* --- VALUE BUILD --- */}
-      <section className="py-28 px-6 bg-white border-y border-pink-50">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-10">
-            This isn’t about “getting him.”<br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-500">It’s about never feeling unsure again.</span>
-          </h2>
-          <div className="text-xl md:text-2xl text-[#1D1D1F] font-semibold tracking-tight leading-relaxed space-y-4">
-            <p>When you understand what’s happening,</p>
-            <p>you stop reacting emotionally...</p>
-            <p className="text-pink-500">and start moving with clarity.</p>
+      {/* --- WHAT YOU ACTUALLY UNLOCK --- */}
+      <section className="py-24 px-6 bg-white relative z-10 border-t border-pink-50">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#1D1D1F] mb-6">
+              What You Actually Unlock
+            </h2>
+            <p className="text-xl md:text-2xl font-bold text-pink-500">
+              You aren't buying a book. <br className="hidden md:block"/>
+              <span className="text-[#1D1D1F]">You are buying the moment everything finally makes sense.</span>
+            </p>
           </div>
-          
-          <div className="pt-12">
-            <button 
-              onClick={handleCTA}
-              className="page-cta-button px-10 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-xl shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_30px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_40px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300"
-            >
-              Access The System He Can’t Ignore
-            </button>
+
+          <div className="bg-[#FDF8F9] rounded-[2.5rem] p-8 md:p-12 border border-pink-100 shadow-[0_20px_50px_rgba(244,63,94,0.05)] mb-12">
+            <ul className="grid md:grid-cols-2 gap-6 md:gap-8">
+              {[
+                "Why he suddenly pulled away without warning",
+                "What your messages were really communicating to him",
+                "How to stop chasing... without losing him",
+                "The exact shift that makes him come back on his own",
+                "What to say (and what to never say again) in critical moments",
+                "How to read his behavior before you get emotionally attached"
+              ].map((item, i) => (
+                <li key={i} className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 shadow-sm mt-1">
+                    <Check className="w-5 h-5 text-pink-500" />
+                  </div>
+                  <span className="text-lg font-semibold text-gray-700 leading-snug">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 text-center md:text-left">
+            <div className="bg-rose-50/50 p-8 rounded-3xl border border-rose-100/50">
+              <p className="text-sm font-extrabold text-gray-400 uppercase tracking-widest mb-4">The Difference Between:</p>
+              <p className="text-xl font-bold text-[#1D1D1F] mb-2 line-through decoration-rose-300">Overthinking every message...</p>
+              <p className="text-xl font-extrabold text-green-600">And knowing exactly what to do next.</p>
+            </div>
+            <div className="bg-pink-50/50 p-8 rounded-3xl border border-pink-100/50">
+              <p className="text-sm font-extrabold text-gray-400 uppercase tracking-widest mb-4">And Between:</p>
+              <p className="text-xl font-bold text-[#1D1D1F] mb-2 line-through decoration-rose-300">Feeling anxious and reactive...</p>
+              <p className="text-xl font-extrabold text-green-600">And being calm, in control, and impossible to ignore.</p>
+            </div>
+          </div>
+
+          <div className="text-center mt-16">
+            <p className="text-2xl md:text-3xl font-extrabold text-[#1D1D1F]">
+              Most women spend months stuck in confusion.
+            </p>
+            <p className="text-2xl md:text-3xl font-extrabold text-pink-500 mt-2">
+              You will see it in one night.
+            </p>
+            
+            <div className="pt-12">
+              <button 
+                onClick={handleCTA}
+                className="page-cta-button px-10 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-xl shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_30px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_40px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300"
+              >
+                Access The System He Can't Ignore
+              </button>
+            </div>
           </div>
         </div>
       </section>
@@ -610,8 +634,8 @@ export default function EbookSalesPage() {
             </div>
             
             <div className="text-lg text-[#1D1D1F] font-semibold bg-pink-100/50 py-4 px-8 rounded-3xl inline-block text-left border border-pink-100">
-              <span className="block text-center text-pink-500 font-bold mb-2">This isn’t $47.77 for a book.</span>
-              It’s the difference between:<br/>
+              <span className="block text-center text-pink-500 font-bold mb-2">This isn't $47.77 for a book.</span>
+              It's the difference between:<br/>
               <span className="text-gray-500 line-through decoration-gray-300">Overthinking every message</span><br/>
               Or knowing exactly what to say.
             </div>
@@ -694,10 +718,10 @@ export default function EbookSalesPage() {
       <section className="pt-16 pb-28 px-6 bg-white text-center">
         <div className="max-w-3xl mx-auto">
           <h3 className="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1D1D1F] mb-4">
-            If you’ve made it this far, you’re not just curious.
+            If you've made it this far, you're not just curious.
           </h3>
           <p className="text-xl text-pink-500 font-bold mb-10">
-            You’re tired of not knowing.
+            You're tired of not knowing.
           </p>
           <button 
             onClick={handleCTA}
@@ -719,7 +743,7 @@ export default function EbookSalesPage() {
           </div>
           <p className="text-3xl font-extrabold tracking-tight text-[#1D1D1F]">Try it for 365 days.</p>
           <p className="text-xl text-gray-600 font-medium leading-relaxed">
-            If it doesn’t change how you understand men <br/>
+            If it doesn't change how you understand men <br/>
             you get a full refund.<br/>
             <span className="font-bold text-[#1D1D1F]">No questions.</span>
           </p>
@@ -729,10 +753,10 @@ export default function EbookSalesPage() {
       {/* --- AUTHOR --- */}
       <section className="py-28 px-6 bg-white">
         <div className="max-w-3xl mx-auto text-center space-y-6 text-xl md:text-2xl leading-relaxed font-semibold tracking-tight">
-          <p className="text-gray-400">I used to be the type of man women couldn’t read.</p>
+          <p className="text-gray-400">I used to be the type of man women couldn't read.</p>
           <p>Interested... then distant.</p>
-          <p className="text-[#1D1D1F]">Until I met someone who didn’t react the way I expected.</p>
-          <p>That’s when I started paying attention.</p>
+          <p className="text-[#1D1D1F]">Until I met someone who didn't react the way I expected.</p>
+          <p>That's when I started paying attention.</p>
           <p className="font-bold pt-6 text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-rose-400">This book is what I learned.</p>
         </div>
       </section>

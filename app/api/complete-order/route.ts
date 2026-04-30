@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import Stripe from "stripe";
+import fs from "fs";
+import path from "path";
+import { DeliveryEmail } from "@/components/emails/DeliveryEmail";
 
-// Initialize external services
 const resend = new Resend(process.env.RESEND_API_KEY);
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: "2026-04-22.dahlia",
+  apiVersion: "2026-04-22.dahlia" as any,
 });
 
 export async function POST(request: Request) {
@@ -17,41 +19,52 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required data" }, { status: 400 });
     }
 
-    // 1. VERIFY THE PAYMENT SECURELY
-    // We check Stripe to ensure the payment actually succeeded (preventing fake API calls)
+    // 1. VERIFY THE PAYMENT
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     
     if (paymentIntent.status !== "succeeded") {
       return NextResponse.json({ error: "Payment not verified" }, { status: 400 });
     }
 
-    // 2. FIRE THE EMAIL VIA RESEND (Automatic Delivery)
+    const firstName = name ? name.split(" ")[0] : "There";
+
+    // 2. READ THE PDF SECURELY
+    const pdfPath = path.join(process.cwd(), "public", "the-pattern-you-never-saw.pdf");
+    let pdfBuffer: Buffer;
+    
+    try {
+      pdfBuffer = fs.readFileSync(pdfPath);
+    } catch (fsError) {
+      console.error("Failed to read PDF file from public folder:", fsError);
+      return NextResponse.json({ error: "File delivery error on server." }, { status: 500 });
+    }
+
+    // 3. SEND THE EMAIL WITH THE ATTACHMENT
     const emailPromise = resend.emails.send({
-      from: "Attract Best Man <support@yourdomain.com>", // Update with your verified Resend domain
+      from: "Attract Best Man <support@attractbestman.com>", 
       to: [email],
-      subject: "Here is your access: Understand Men Ebook",
-      html: `
-        <div style="font-family: sans-serif; color: #1D1D1F; max-w-2xl; margin: 0 auto;">
-          <h2>Hi ${name.split(' ')[0]},</h2>
-          <p>Your payment was successful. Here is your private access link to the system:</p>
-          <a href="https://yourdomain.com/secret-download-link" style="display: inline-block; padding: 12px 24px; background: #f43f5e; color: #fff; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">Download Ebook Now</a>
-          <p>If you have any questions, reply directly to this email.</p>
-        </div>
-      `,
+      subject: "Your Access: The Pattern You Never Saw",
+      react: DeliveryEmail({ customerName: firstName }),
+      attachments: [
+        {
+          filename: "The Pattern You Never Saw.pdf",
+          content: pdfBuffer,
+        },
+      ],
     }).catch(err => console.error("Resend Email Failed:", err));
 
-    // 3. ADD TO MARKETING LIST (Automatic Email Marketing)
+    // 4. ADD CONTACT TO YOUR MARKETING AUDIENCE
     const listPromise = process.env.RESEND_AUDIENCE_ID ? resend.contacts.create({
       email: email,
-      firstName: name.split(' ')[0], 
+      firstName: firstName, 
       unsubscribed: false,
       audienceId: process.env.RESEND_AUDIENCE_ID,
     }).catch(err => console.error("Resend List Addition Failed:", err)) : Promise.resolve();
 
-    // Run Delivery and Marketing operations at the exact same time
+    // Run both operations concurrently
     await Promise.all([emailPromise, listPromise]);
 
-    return NextResponse.json({ success: true, message: "Order processed flawlessly." });
+    return NextResponse.json({ success: true, message: "Order processed, email sent, and contact added." });
 
   } catch (error: any) {
     console.error("Complete Order Route Failed:", error);
