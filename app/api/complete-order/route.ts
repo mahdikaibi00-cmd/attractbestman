@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     // 3. SEND THE EMAIL WITH THE ATTACHMENT
     const emailPromise = resend.emails.send({
-      from: "Attract Best Man <support@attractbestman.com>", 
+      from: "Attract Best Man <attractbestman@vireva.agency>", 
       to: [email],
       subject: "Your Access: The Pattern You Never Saw",
       react: DeliveryEmail({ customerName: firstName }),
