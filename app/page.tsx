@@ -210,7 +210,6 @@ export default function EbookSalesPage() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      // Bypassing strict TypeScript by casting window as any
       (function(e: any) {
         if (!(window as any).pintrk) {
           (window as any).pintrk = function() {
@@ -286,24 +285,20 @@ export default function EbookSalesPage() {
       
       {/* --- MAC-OS STYLE HERO SECTION --- */}
       <section id="hero-section" className="relative pt-16 pb-14 md:pt-24 md:pb-20 px-6 overflow-hidden">
-        {/* Soft elegant background glow (Desktop) */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[600px] opacity-40 pointer-events-none -z-10 hidden lg:block">
           <div className="absolute inset-0 bg-gradient-to-tr from-pink-100 via-rose-50 to-transparent blur-[80px] rounded-full mix-blend-multiply"></div>
         </div>
 
-        {/* Soft mobile gradient background */}
         <div className="absolute inset-0 -z-10 lg:hidden bg-gradient-to-b from-[#FDF8F9] via-pink-50/40 to-[#FDF8F9]"></div>
 
         <div className="max-w-7xl mx-auto grid lg:grid-cols-12 gap-8 lg:gap-16 items-center">
           
-          {/* Main Column */}
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="flex flex-col lg:col-span-7"
           >
-            {/* 1. Headline */}
             <div className="mb-2">
               <h1 className="text-[2.5rem] md:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight text-balance">
                 He Didn't <span className="text-pink-500">“Lose Interest.”</span><br/>
@@ -312,12 +307,10 @@ export default function EbookSalesPage() {
               </h1>
             </div>
 
-            {/* 2. Micro emotional line */}
             <p className="mb-8 text-[15px] md:text-lg text-gray-500 font-semibold tracking-tight">
               And that's exactly why it keeps happening.
             </p>
 
-            {/* 3. IMAGE (MOBILE ONLY - Anchoring the feeling) */}
             <div className="relative w-full max-w-[320px] mx-auto rounded-[2rem] overflow-hidden shadow-[0_20px_50px_-10px_rgba(244,63,94,0.15)] bg-white border border-white/60 lg:hidden">
                <Image 
                   src="/ebook1.jpg" 
@@ -330,7 +323,6 @@ export default function EbookSalesPage() {
               <div className="absolute inset-0 bg-gradient-to-tr from-white/20 via-transparent to-transparent pointer-events-none mix-blend-overlay"></div>
             </div>
 
-            {/* 4. NEW: UNFINISHED PSYCHOLOGICAL LOOP (Pattern Reveal Tease) */}
             <div className="mt-8 mb-8 text-center sm:text-left max-w-sm sm:max-w-md mx-auto sm:mx-0">
               <p className="text-base md:text-lg font-bold text-[#1D1D1F] leading-snug">
                 There's a moment where his behavior shifts.
@@ -341,7 +333,6 @@ export default function EbookSalesPage() {
               </p>
             </div>
 
-            {/* 5. Bullets (Upgraded to deepen curiosity) */}
             <ul className="space-y-3 md:space-y-4 text-[15px] md:text-lg font-semibold mb-8">
               <li className="flex items-start gap-3 md:gap-4 text-[#1D1D1F]">
                 <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-pink-100 flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
@@ -363,7 +354,6 @@ export default function EbookSalesPage() {
               </li>
             </ul>
 
-            {/* 6. CTA & 7. Trust row */}
             <div className="pt-2 relative">
               <div className="absolute inset-0 bg-pink-200 blur-2xl opacity-40 rounded-full hidden sm:block"></div>
               <button 
@@ -386,7 +376,6 @@ export default function EbookSalesPage() {
             </div>
           </motion.div>
 
-          {/* Actual Product Image (Desktop Only) */}
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -514,7 +503,7 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-      {/* --- WHAT'S INSIDE (UPGRADED LIQUID GLASS) --- */}
+      {/* --- WHAT'S INSIDE --- */}
       <section className="py-24 px-6 bg-[#FDF8F9]">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16 space-y-6">
@@ -557,68 +546,57 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-      {/* --- WHAT YOU ACTUALLY UNLOCK --- */}
+      {/* --- THE FINAL PUSH (REPLACES "WHAT YOU ACTUALLY UNLOCK") --- */}
       <section className="py-24 px-6 bg-white relative z-10 border-t border-pink-50">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#1D1D1F] mb-6">
-              What You Actually Unlock
-            </h2>
-            <p className="text-xl md:text-2xl font-bold text-pink-500">
-              You aren't buying a book. <br className="hidden md:block"/>
-              <span className="text-[#1D1D1F]">You are buying the moment everything finally makes sense.</span>
-            </p>
-          </div>
+        <div className="max-w-3xl mx-auto text-center space-y-8">
+          <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#1D1D1F]">
+            This is where everything changes.
+          </h2>
+          <p className="text-2xl md:text-3xl font-semibold text-gray-500 leading-snug">
+            Not because you try harder.<br/>
+            <span className="text-pink-500">But because you finally see what's been happening the entire time.</span>
+          </p>
 
-          <div className="bg-[#FDF8F9] rounded-[2.5rem] p-8 md:p-12 border border-pink-100 shadow-[0_20px_50px_rgba(244,63,94,0.05)] mb-12">
-            <ul className="grid md:grid-cols-2 gap-6 md:gap-8">
-              {[
-                "Why he suddenly pulled away without warning",
-                "What your messages were really communicating to him",
-                "How to stop chasing... without losing him",
-                "The exact shift that makes him come back on his own",
-                "What to say (and what to never say again) in critical moments",
-                "How to read his behavior before you get emotionally attached"
-              ].map((item, i) => (
-                <li key={i} className="flex items-start gap-4">
-                  <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center shrink-0 shadow-sm mt-1">
-                    <Check className="w-5 h-5 text-pink-500" />
-                  </div>
-                  <span className="text-lg font-semibold text-gray-700 leading-snug">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 text-center md:text-left">
-            <div className="bg-rose-50/50 p-8 rounded-3xl border border-rose-100/50">
-              <p className="text-sm font-extrabold text-gray-400 uppercase tracking-widest mb-4">The Difference Between:</p>
-              <p className="text-xl font-bold text-[#1D1D1F] mb-2 line-through decoration-rose-300">Overthinking every message...</p>
-              <p className="text-xl font-extrabold text-green-600">And knowing exactly what to do next.</p>
-            </div>
-            <div className="bg-pink-50/50 p-8 rounded-3xl border border-pink-100/50">
-              <p className="text-sm font-extrabold text-gray-400 uppercase tracking-widest mb-4">And Between:</p>
-              <p className="text-xl font-bold text-[#1D1D1F] mb-2 line-through decoration-rose-300">Feeling anxious and reactive...</p>
-              <p className="text-xl font-extrabold text-green-600">And being calm, in control, and impossible to ignore.</p>
-            </div>
-          </div>
-
-          <div className="text-center mt-16">
-            <p className="text-2xl md:text-3xl font-extrabold text-[#1D1D1F]">
-              Most women spend months stuck in confusion.
-            </p>
-            <p className="text-2xl md:text-3xl font-extrabold text-pink-500 mt-2">
-              You will see it in one night.
-            </p>
+          <div className="py-8 space-y-6 text-xl md:text-2xl font-medium text-[#1D1D1F] tracking-tight">
+            <p>You've felt it before.</p>
+            <p>The shift.<br/>The distance.<br/>The silence that didn't make sense.</p>
             
-            <div className="pt-12">
-              <button 
-                onClick={handleCTA}
-                className="page-cta-button px-10 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-xl shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_30px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_40px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300"
-              >
-                Access The System He Can't Ignore
-              </button>
+            <div className="bg-[#FDF8F9] p-8 md:p-10 rounded-[2.5rem] border border-pink-100 my-10 shadow-[0_10px_30px_rgba(244,63,94,0.05)] max-w-xl mx-auto">
+              <p className="text-gray-400 text-sm font-extrabold uppercase tracking-widest mb-4">You thought:</p>
+              <p className="font-extrabold text-rose-500 mb-2">"Maybe I said too much."</p>
+              <p className="font-extrabold text-rose-500">"Maybe I pushed him away."</p>
             </div>
+
+            <p className="font-extrabold text-4xl text-[#1D1D1F]">You didn't.</p>
+            <p className="text-gray-500">You just didn't see the pattern.</p>
+
+            <div className="space-y-4 pt-10 text-left max-w-md mx-auto">
+              <p className="flex items-center gap-4 text-lg md:text-xl font-bold"><Check className="text-green-500 w-6 h-6 shrink-0"/> And once you see it... you stop reacting.</p>
+              <p className="flex items-center gap-4 text-lg md:text-xl font-bold"><Check className="text-green-500 w-6 h-6 shrink-0"/> You stop chasing.</p>
+              <p className="flex items-center gap-4 text-lg md:text-xl font-bold"><Check className="text-green-500 w-6 h-6 shrink-0"/> You stop overthinking every message.</p>
+            </div>
+
+            <div className="pt-12">
+               <p className="text-3xl md:text-4xl font-extrabold text-[#1D1D1F]">You start knowing.</p>
+               <p className="text-xl text-gray-500 mt-4 font-semibold">Knowing what he's doing. Knowing what it means.<br/>Knowing exactly how to respond.</p>
+               <p className="text-xl font-bold text-pink-500 mt-6">That's the difference.</p>
+            </div>
+          </div>
+
+          <div className="pt-16 border-t border-gray-100">
+            <p className="text-2xl md:text-3xl font-extrabold text-[#1D1D1F]">
+              Most women stay stuck in confusion for months.
+            </p>
+            <p className="text-2xl md:text-3xl font-extrabold text-pink-500 mt-2 mb-12">
+              You won't. You'll see it in one night.
+            </p>
+
+            <button 
+              onClick={handleCTA}
+              className="page-cta-button px-10 py-5 bg-gradient-to-b from-pink-400 to-rose-500 text-white rounded-full font-bold text-xl shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_10px_30px_rgba(244,63,94,0.3)] hover:shadow-[inset_0px_1px_1px_rgba(255,255,255,0.4),0_15px_40px_rgba(244,63,94,0.4)] hover:-translate-y-0.5 transition-all duration-300"
+            >
+              Access The System He Can't Ignore
+            </button>
           </div>
         </div>
       </section>
@@ -761,7 +739,7 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-{/* --- FOOTER & LEGAL MODALS --- */}
+      {/* --- FOOTER & LEGAL MODALS --- */}
       <footer className="pt-8 pb-10 border-t border-[#1F0E13] bg-[#0A0406] text-center text-[11px] font-bold tracking-widest uppercase text-white/80">
         <div className="flex justify-center items-center gap-6 mb-4">
           <button 
