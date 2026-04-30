@@ -6,7 +6,6 @@ import { Check, Star, Lock, ShieldCheck, ArrowRight, ChevronDown, Mail, X } from
 import Image from "next/image";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { Analytics } from "@vercel/analytics/next";
 
 // --- STRIPE SETUP ---
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -889,8 +888,6 @@ export default function EbookSalesPage() {
           </motion.div>
         )}
       </AnimatePresence>
-      
-      <Analytics />
     </div>
   );
 }
