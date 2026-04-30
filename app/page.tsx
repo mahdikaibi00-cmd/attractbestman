@@ -53,7 +53,14 @@ const FAQS = [
   { question: "I have a question about my order.", answer: "You can contact support anytime, and you'll get a response quickly.\nWe make sure you're taken care of." },
 ];
 
-// --- CHECKOUT FORM COMPONENT (SAFARI & POINTER-EVENTS FIX APPLIED) ---
+const SHIFT_CARDS = [
+  { icon: MessageCircle, title: "He was consistent", desc: "Fast replies, constant attention.", ui: "Hey! Can't wait to see you tonight 😊" },
+  { icon: Clock, title: "Then it changed", desc: "Shorter texts. Unexplained delays.", ui: "Yeah maybe later, super busy rn." },
+  { icon: MoreHorizontal, title: "You felt it", desc: "You knew something was off immediately.", ui: "Typing..." },
+  { icon: FileText, title: "The Overthinking", desc: "Drafting texts trying to 'fix' it.", ui: "[Draft]: Did I do something wrong?" }
+];
+
+// --- CHECKOUT FORM COMPONENT (SAFARI BUG FIXED) ---
 const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState, setCheckoutState }: any) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -184,7 +191,7 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
       <button 
         type="submit" 
         disabled={!stripe || checkoutState === "processing"}
-        className="w-full py-4 min-h-[56px] mt-2 bg-gradient-to-r from-pink-500 to-rose-500 text-white rounded-xl md:rounded-2xl font-extrabold text-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_10px_20px_rgba(244,63,94,0.2)] hover:shadow-[0_15px_30px_rgba(244,63,94,0.3)] active:scale-[0.98] duration-300 relative z-[10000]"
+        className="w-full py-4 min-h-[56px] mt-2 bg-[#1D1D1F] text-white rounded-xl md:rounded-2xl font-extrabold text-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-[0_10px_20px_rgba(0,0,0,0.15)] hover:shadow-[0_15px_30px_rgba(0,0,0,0.25)] hover:bg-black active:scale-[0.98] duration-300 relative z-[10000]"
       >
         {checkoutState === "processing" ? (
           <>
@@ -197,6 +204,85 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
         ) : "Get Instant Access — $47.77"}
       </button>
     </form>
+  );
+};
+
+// --- MOBILE 3D SWIPE STACK COMPONENT ---
+const MobileSwipeStack = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const handleDragEnd = (e: any, info: any) => {
+    // If swiped left or right far enough, move to next card
+    if (info.offset.x < -80 || info.offset.x > 80) {
+      if (currentIndex < SHIFT_CARDS.length - 1) {
+        setCurrentIndex(prev => prev + 1);
+      }
+    }
+  };
+
+  return (
+    <div className="flex lg:hidden flex-col items-center relative w-full h-[480px] mt-4 perspective-[1000px] z-20">
+      
+      {/* Swipe Indicator (Disappears when interaction starts) */}
+      <AnimatePresence>
+        {currentIndex === 0 && (
+          <motion.div 
+            exit={{ opacity: 0 }}
+            className="absolute -top-6 text-[10px] font-extrabold text-pink-400 uppercase tracking-widest animate-pulse flex items-center gap-2 z-0"
+          >
+            ← Swipe To Reveal →
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      {SHIFT_CARDS.map((card, i) => {
+        const isTop = i === currentIndex;
+        const isGone = i < currentIndex;
+        const isNext = i > currentIndex;
+        const offset = i - currentIndex; // How many cards behind the current one
+
+        return (
+          <motion.div
+            key={i}
+            // Only the top card is draggable, and only if it's not the last card
+            drag={isTop && currentIndex < SHIFT_CARDS.length - 1 ? "x" : false}
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.8}
+            onDragEnd={handleDragEnd}
+            whileDrag={{ scale: 1.02, cursor: "grabbing" }}
+            animate={{
+              // If swiped away, throw it off screen. Otherwise keep centered.
+              x: isGone ? (i % 2 === 0 ? -400 : 400) : 0,
+              // Stack offset: 0 for top, 24px per card behind. Swiped cards drop down.
+              y: isGone ? 100 : isNext ? offset * 24 : 0,
+              // Scale down slightly as they go further back
+              scale: isGone ? 0.8 : isNext ? 1 - offset * 0.05 : 1,
+              // Fade out background cards
+              opacity: isGone ? 0 : 1 - (offset * 0.25),
+              // Swiped cards rotate as they fall off
+              rotateZ: isGone ? (i % 2 === 0 ? -15 : 15) : 0,
+              // Layering: Top card is highest z-index
+              zIndex: 10 - i,
+            }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className={`absolute w-[85vw] max-w-[340px] bg-white p-8 rounded-[2.5rem] flex flex-col gap-6 ${isTop ? 'border-[3px] border-pink-100 shadow-[0_30px_60px_rgba(244,63,94,0.15)] cursor-grab' : 'border border-gray-100 shadow-sm pointer-events-none'}`}
+          >
+            <div className="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center shrink-0 border border-pink-100/50">
+              <card.icon className="w-6 h-6 text-pink-500" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-[#1D1D1F] mb-2">{card.title}</h3>
+              <p className="text-gray-500 font-medium">{card.desc}</p>
+            </div>
+            <div className="mt-auto pt-6 border-t border-gray-50">
+              <div className={`text-sm font-medium p-4 rounded-2xl shadow-sm ${i === 0 ? "bg-[#0A84FF] text-white" : i === 1 ? "bg-gray-100 text-gray-600" : i === 2 ? "bg-gray-50 text-gray-400 animate-pulse" : "bg-rose-50 text-rose-600 border border-rose-100"}`}>
+                {card.ui}
+              </div>
+            </div>
+          </motion.div>
+        )
+      })}
+    </div>
   );
 };
 
@@ -307,88 +393,127 @@ export default function EbookSalesPage() {
   return (
     <div className="min-h-screen bg-[#FDF8F9] text-[#1D1D1F] font-sans selection:bg-pink-200 selection:text-pink-900 pb-20 overflow-x-hidden antialiased">
       
-      {/* --- 1. HERO SECTION (APPLE TIER DESKTOP & MOBILE SPLIT) --- */}
-      <section id="hero-section" className="relative pt-24 pb-16 md:pt-32 md:pb-32 px-6 overflow-hidden min-h-[90vh] flex flex-col justify-center">
+      {/* --- 1. HERO SECTION (ULTRA-CLEAN APPLE TIER) --- */}
+      <section id="hero-section" className="relative pt-24 pb-16 md:pt-32 md:pb-32 px-6 min-h-[95vh] flex flex-col justify-center overflow-hidden bg-white">
         
-        {/* Apple-style background depth */}
+        {/* Absolute pristine background with incredibly soft, expensive lighting */}
         <div className="absolute inset-0 z-0 flex items-center justify-end pointer-events-none">
-          <div className="w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] bg-[radial-gradient(circle_at_right,_var(--tw-gradient-stops))] from-pink-300/30 via-rose-100/10 to-transparent blur-[80px] rounded-full translate-x-1/4"></div>
+          <div className="w-[90vw] h-[90vw] max-w-[900px] max-h-[900px] bg-[radial-gradient(circle_at_right,_var(--tw-gradient-stops))] from-pink-100/50 via-gray-50/10 to-transparent blur-[100px] rounded-full translate-x-1/3"></div>
         </div>
         
-        {/* DESKTOP LAYOUT (Strict, Controlled, Powerful) */}
-        <div className="hidden lg:grid max-w-[1100px] mx-auto grid-cols-2 gap-12 items-center relative z-20">
+        {/* DESKTOP LAYOUT */}
+        <div className="hidden lg:grid max-w-[1100px] mx-auto grid-cols-12 gap-8 items-center relative z-20 w-full">
           
-          {/* Left Column: Text & Persuasion */}
-          <div className="flex flex-col items-start text-left max-w-[480px]">
-            <h1 className="font-extrabold leading-[1.05] tracking-tighter">
-              <span className="block text-4xl text-[#1D1D1F] mb-1">He Didn't</span>
-              <span className="block text-6xl text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-500 pb-2">“Lose Interest.”</span>
+          {/* Left Column: Text & Persuasion (Takes up 6 columns) */}
+          <div className="col-span-6 flex flex-col items-start text-left pr-4">
+            <h1 className="font-extrabold leading-[1.05] tracking-tighter text-balance">
+              <span className="block text-[2.75rem] text-[#1D1D1F] mb-1">He Didn't</span>
+              <span className="block text-[4.5rem] text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-500 pb-2 drop-shadow-sm">“Lose Interest.”</span>
               <span className="block text-3xl text-gray-400 tracking-tight mt-1">Something shifted.</span>
             </h1>
             
-            <div className="mt-8 space-y-1">
-              <p className="text-2xl text-gray-700 font-semibold tracking-tight">You felt it.</p>
-              <p className="text-xl text-gray-500 font-medium">This shows you what actually happened.</p>
+            <p className="mt-8 text-[1.35rem] text-gray-600 font-medium tracking-tight">
+              You felt it. <br/>
+              <span className="text-gray-500 font-normal">This shows you what actually happened.</span>
+            </p>
+
+            {/* Premium Glowing Bullets */}
+            <div className="flex flex-col gap-4 mt-8 mb-10 w-full">
+              {[
+                "Stop overthinking his silence.",
+                "Know exactly what to text back.",
+                "Recognize the shift before he pulls away."
+              ].map((bullet, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <div className="w-6 h-6 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(34,197,94,0.4)] border border-green-500/20">
+                    <Check className="w-3.5 h-3.5 text-green-500" />
+                  </div>
+                  <span className="text-[#1D1D1F] font-semibold text-lg">{bullet}</span>
+                </div>
+              ))}
             </div>
 
             <button 
               onClick={handleCTA}
-              className="mt-10 page-cta-button relative group px-10 py-5 bg-gradient-to-b from-pink-500 to-rose-600 text-white rounded-[1.5rem] font-extrabold text-xl shadow-[0_10px_20px_rgba(244,63,94,0.25)] hover:shadow-[0_15px_30px_rgba(244,63,94,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center gap-3 overflow-hidden"
+              className="page-cta-button relative group px-12 py-5 bg-[#1D1D1F] text-white rounded-[1.5rem] font-extrabold text-xl shadow-[0_10px_25px_rgba(0,0,0,0.15)] hover:shadow-[0_15px_35px_rgba(0,0,0,0.25)] hover:bg-black hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 flex items-center gap-3 overflow-hidden"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 ease-in-out"></div>
               See What You Missed
             </button>
 
-            <div className="mt-6 flex items-center gap-2 text-sm font-bold text-gray-500 opacity-90">
+            <div className="mt-6 flex items-center gap-2 text-sm font-bold text-gray-400 opacity-90">
               <Star className="w-4 h-4 text-yellow-500 fill-current" />
               “I wish I knew this 3 months ago.”
             </div>
           </div>
 
-          {/* Right Column: 3D iPad Pro Display */}
-          <div className="flex justify-end relative perspective-[1200px]">
+          {/* Right Column: 3D iPad Pro Display (Takes up 6 columns) */}
+          <div className="col-span-6 flex justify-end relative perspective-[1200px] w-full">
             <motion.div 
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
               style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-              className="relative w-full max-w-[400px] aspect-[3/4] rounded-[2rem] border-[12px] border-[#1c1c1e] bg-[#000000] shadow-[0_30px_60px_-15px_rgba(244,63,94,0.4)] cursor-pointer group transform-gpu rotate-y-[-4deg] rotate-x-[2deg]"
+              className="relative w-full max-w-[440px] aspect-[3/4] rounded-[2.5rem] border-[14px] border-[#1c1c1e] bg-[#000000] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)] cursor-pointer group transform-gpu rotate-y-[-5deg] rotate-x-[2deg]"
             >
               {/* Fake iPad Power Button */}
-              <div className="absolute top-8 -right-[16px] w-[4px] h-12 bg-gray-800 rounded-r-md"></div>
+              <div className="absolute top-10 -right-[18px] w-[5px] h-12 bg-gray-800 rounded-r-md"></div>
               {/* Fake iPad Volume Buttons */}
-              <div className="absolute top-24 -right-[16px] w-[4px] h-16 bg-gray-800 rounded-r-md"></div>
+              <div className="absolute top-28 -right-[18px] w-[5px] h-16 bg-gray-800 rounded-r-md"></div>
               
-              <div className="relative w-full h-full rounded-[1.2rem] overflow-hidden">
+              <div className="relative w-full h-full rounded-[1.4rem] overflow-hidden">
                 <Image src="/ebook1.jpg" alt="Book Cover" fill priority className="object-cover transition-transform duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent mix-blend-overlay"></div>
+                {/* Stunning Screen Reflection */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-black/20 pointer-events-none mix-blend-overlay"></div>
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
               </div>
             </motion.div>
+            
+            {/* Deep glow behind the iPad */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-pink-400/15 blur-[60px] -z-10 rounded-full"></div>
           </div>
 
         </div>
 
-        {/* MOBILE LAYOUT (Fast, Emotional, Direct) */}
+        {/* MOBILE LAYOUT (Thumb-friendly, Hyper-Emotional, Linear Flow) */}
         <div className="flex lg:hidden flex-col items-center text-center relative z-20 w-full">
           
-          <h1 className="font-extrabold leading-[1.05] tracking-tighter w-full">
+          <h1 className="font-extrabold leading-[1.05] tracking-tighter w-full mb-8">
             <span className="block text-3xl text-[#1D1D1F] mb-1">He Didn't</span>
-            <span className="block text-[3.25rem] text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-500 pb-1">“Lose Interest.”</span>
+            <span className="block text-[3.25rem] text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-500 pb-1 drop-shadow-sm">“Lose Interest.”</span>
             <span className="block text-[1.75rem] text-gray-400 tracking-tight mt-1">Something shifted.</span>
           </h1>
 
-          <div className="w-full max-w-[320px] aspect-[3/4] relative rounded-3xl overflow-hidden shadow-[0_25px_50px_-12px_rgba(244,63,94,0.3)] my-10 border-[6px] border-[#1c1c1e]">
-            <Image src="/ebook1.jpg" alt="Book Cover" fill priority className="object-cover" />
+          <div className="space-y-1 mb-8 w-full max-w-[320px]">
+            <p className="text-[1.35rem] text-[#1D1D1F] font-bold tracking-tight">You felt it.</p>
+            <p className="text-[1rem] text-gray-500 font-medium">This shows you what actually happened.</p>
           </div>
 
-          <div className="space-y-1 mb-8">
-            <p className="text-2xl text-[#1D1D1F] font-bold tracking-tight">You felt it.</p>
-            <p className="text-lg text-gray-500 font-medium">This shows you what actually happened.</p>
+          <div className="w-full max-w-[340px] aspect-[3/4] relative rounded-[2rem] overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.25)] mb-10 border-[8px] border-[#1c1c1e] bg-black perspective-[1000px]">
+             <div className="relative w-full h-full rounded-[1.2rem] overflow-hidden transform-gpu rotate-x-[2deg]">
+                <Image src="/ebook1.jpg" alt="Book Cover" fill priority className="object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-black/20 pointer-events-none mix-blend-overlay"></div>
+             </div>
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-pink-400/20 blur-[50px] -z-10 rounded-full"></div>
+          </div>
+
+          {/* Premium Glowing Bullets (Mobile) */}
+          <div className="flex flex-col gap-3 mb-10 w-full max-w-[320px] text-left">
+              {[
+                "Stop overthinking his silence.",
+                "Know exactly what to text back.",
+                "Recognize the shift early."
+              ].map((bullet, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-5 h-5 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(34,197,94,0.4)] border border-green-500/20">
+                    <Check className="w-3 h-3 text-green-500" />
+                  </div>
+                  <span className="text-[#1D1D1F] font-semibold text-[15px]">{bullet}</span>
+                </div>
+              ))}
           </div>
 
           <button 
             onClick={handleCTA}
-            className="w-[90%] mx-auto page-cta-button py-4 bg-gradient-to-b from-pink-500 to-rose-600 text-white rounded-2xl font-extrabold text-[22px] shadow-[0_15px_30px_rgba(244,63,94,0.3)] active:scale-[0.98] transition-transform flex items-center justify-center"
+            className="w-[90%] mx-auto page-cta-button py-5 bg-[#1D1D1F] text-white rounded-[1.25rem] font-extrabold text-[20px] shadow-[0_15px_30px_rgba(0,0,0,0.2)] active:scale-[0.98] transition-transform flex items-center justify-center"
           >
             See What You Missed
           </button>
@@ -401,9 +526,9 @@ export default function EbookSalesPage() {
         </div>
       </section>
 
-      {/* --- 2. INTERACTIVE "THE SHIFT" SECTION --- */}
-      <section className="py-24 px-6 relative z-10 bg-white border-y border-pink-50">
-        <div className="max-w-7xl mx-auto">
+      {/* --- 2. INTERACTIVE "THE SHIFT" SECTION (APPLE 3D STACK) --- */}
+      <section className="py-24 relative z-10 bg-[#FDF8F9] border-y border-pink-50 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16 space-y-4">
             <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-[#1D1D1F]">
               The Invisible Shift.
@@ -412,38 +537,38 @@ export default function EbookSalesPage() {
               It doesn't happen randomly. It follows a specific psychological timeline.
             </p>
           </div>
-
-          <div className="flex lg:grid lg:grid-cols-4 overflow-x-auto snap-x snap-mandatory hide-scrollbar gap-6 pb-8 px-4 lg:px-0">
-            {[
-              { icon: MessageCircle, title: "He was consistent", desc: "Fast replies, constant attention.", ui: "Hey! Can't wait to see you tonight 😊" },
-              { icon: Clock, title: "Then it changed", desc: "Shorter texts. Unexplained delays.", ui: "Yeah maybe later, super busy rn." },
-              { icon: MoreHorizontal, title: "You felt it", desc: "You knew something was off immediately.", ui: "Typing..." },
-              { icon: FileText, title: "The Overthinking", desc: "Drafting texts trying to 'fix' it.", ui: "[Draft]: Did I do something wrong?" }
-            ].map((card, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="snap-center shrink-0 w-[85vw] sm:w-[320px] lg:w-auto bg-[#FDF8F9] p-8 rounded-[2.5rem] border border-pink-100/50 shadow-sm flex flex-col gap-6"
-              >
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shrink-0 shadow-sm border border-pink-50">
-                  <card.icon className="w-6 h-6 text-pink-500" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-[#1D1D1F] mb-2">{card.title}</h3>
-                  <p className="text-gray-500 font-medium">{card.desc}</p>
-                </div>
-                <div className="mt-auto pt-6 border-t border-gray-100">
-                  <div className={`text-sm font-medium p-4 rounded-2xl shadow-sm ${i === 0 ? "bg-[#0A84FF] text-white" : i === 1 ? "bg-gray-200 text-gray-700" : i === 2 ? "bg-gray-100 text-gray-400 animate-pulse" : "bg-rose-50 text-rose-600 border border-rose-100"}`}>
-                    {card.ui}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
         </div>
+
+        {/* DESKTOP LAYOUT (Horizontal Grid) */}
+        <div className="hidden lg:grid max-w-7xl mx-auto lg:grid-cols-4 gap-6 pb-8 px-6">
+          {SHIFT_CARDS.map((card, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex flex-col gap-6"
+            >
+              <div className="w-14 h-14 bg-pink-50 rounded-2xl flex items-center justify-center shrink-0 border border-pink-100/50">
+                <card.icon className="w-6 h-6 text-pink-500" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-[#1D1D1F] mb-2">{card.title}</h3>
+                <p className="text-gray-500 font-medium">{card.desc}</p>
+              </div>
+              <div className="mt-auto pt-6 border-t border-gray-50">
+                <div className={`text-sm font-medium p-4 rounded-2xl shadow-sm ${i === 0 ? "bg-[#0A84FF] text-white" : i === 1 ? "bg-gray-100 text-gray-600" : i === 2 ? "bg-gray-50 text-gray-400 animate-pulse" : "bg-rose-50 text-rose-600 border border-rose-100"}`}>
+                  {card.ui}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* MOBILE LAYOUT (Swipeable 3D Deck) */}
+        <MobileSwipeStack />
+
       </section>
 
       {/* --- 3. "THIS IS NOT A BOOK" (DARK SECTION) --- */}
@@ -584,7 +709,6 @@ export default function EbookSalesPage() {
                 <div className="w-full bg-[#2c2c2e] rounded-full py-2.5 px-4 flex items-center shadow-inner">
                   <span className="text-white text-[15px] font-medium opacity-90 flex items-center">
                     Did I say something wrong?
-                    {/* Fixed Framer Motion parsing bug with strict array steps */}
                     <motion.div 
                       animate={{ opacity: [1, 1, 0, 0] }}
                       transition={{ duration: 1, repeat: Infinity, times: [0, 0.5, 0.5, 1], ease: "linear" }}
@@ -727,7 +851,6 @@ export default function EbookSalesPage() {
 
           {/* RIGHT SIDE (Payment Card - Apple Style Solid Container) */}
           <div className="lg:col-span-5 w-full max-w-[420px] mx-auto order-2 relative z-[9900] mt-4 lg:mt-0 isolate pointer-events-auto">
-            {/* SOLID WHITE BACKGROUND - ZERO BACKDROP-BLUR TO PREVENT WEBKIT BUG */}
             <div className="bg-white border border-gray-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-[0_30px_60px_rgba(0,0,0,0.08)] relative z-[9950] isolate pointer-events-auto">
               
               <AnimatePresence mode="wait">
