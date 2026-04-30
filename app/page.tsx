@@ -12,7 +12,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 
 // --- PINTEREST TRACKING SETUP ---
 const TAG_IDS = [
-  "TAG_ID_1", "TAG_ID_2", "TAG_ID_3", "TAG_ID_4", "TAG_ID_5",
+  "2612612515475", "TAG_ID_2", "TAG_ID_3", "TAG_ID_4", "TAG_ID_5",
   "TAG_ID_6", "TAG_ID_7", "TAG_ID_8", "TAG_ID_9", "TAG_ID_10"
 ];
 
