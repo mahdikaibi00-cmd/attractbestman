@@ -468,7 +468,7 @@ export default function EbookSalesPage() {
               "price": "47.77",
               "priceCurrency": "USD",
               "availability": "https://schema.org/InStock",
-              "url": "https://attractbestmen.vireva.agency/",
+              "url": "https://www.attractbestman.com/",
               "seller": {
                 "@type": "Organization",
                 "name": "Attract Best Man"
