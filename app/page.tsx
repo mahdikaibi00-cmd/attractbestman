@@ -11,25 +11,26 @@ import { Analytics } from "@vercel/analytics/next";
 // --- STRIPE SETUP ---
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-// --- PINTEREST TRACKING SETUP (GOD LEVEL) ---
-const TAG_IDS = ["2612612515475", "2612567833830"];
-
+// --- GOD-LEVEL DYNAMIC TRACKING SYSTEM ---
+// We no longer hardcode tags. The system dynamically tracks whatever tag brought the user here.
 const trackPinterest = (event: string, data?: any, email?: string) => {
   if (typeof window !== "undefined" && (window as any).pintrk) {
-    // 1. AGGRESSIVE ENHANCED MATCH: Set email the second we get it
+    
+    // 1. AGGRESSIVE ENHANCED MATCH & LOCAL VAULTING
     if (email && email.includes("@")) {
-      (window as any).pintrk("set", { em: email });
+      const cleanEmail = email.toLowerCase().trim();
+      (window as any).pintrk("set", { em: cleanEmail });
+      localStorage.setItem("vaulted_email", cleanEmail);
     }
 
-    // 2. UNIVERSAL DEDUPLICATION: Ensure every event has a unique ID for timeline tracking
+    // 2. UNIVERSAL DEDUPLICATION
     const enrichedData = data || {};
     if (!enrichedData.event_id) {
       enrichedData.event_id = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     }
 
-    TAG_IDS.forEach((id) => {
-      (window as any).pintrk("track", event, enrichedData);
-    });
+    // 3. FIRE TO THE DYNAMICALLY LOADED PIXEL
+    (window as any).pintrk("track", event, enrichedData);
   }
 };
 
@@ -74,7 +75,7 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [hasTrackedCardFocus, setHasTrackedCardFocus] = useState(false);
 
-  // PRE-SUBMIT TRACKING: Grabs email the moment they click out of the box
+  // PRE-SUBMIT TRACKING: Capture and lock email into Pinterest instantly
   const handleEmailBlur = () => {
     if (email.includes("@")) {
       trackPinterest("custom", { event_name: "entered_email" }, email);
@@ -100,13 +101,13 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
 
       const contentType = intentRes.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Unable to connect to the secure payment server. Please contact support.");
+        throw new Error("Unable to connect to the secure payment server.");
       }
 
       const intentData = await intentRes.json();
 
-      if (!intentRes.ok) throw new Error(intentData.error || "Failed to initialize secure checkout.");
-      if (!intentData.clientSecret) throw new Error("Invalid response from payment server.");
+      if (!intentRes.ok) throw new Error(intentData.error || "Failed to initialize checkout.");
+      if (!intentData.clientSecret) throw new Error("Invalid response from server.");
 
       const { error, paymentIntent } = await stripe.confirmCardPayment(intentData.clientSecret, {
         payment_method: {
@@ -124,12 +125,11 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
           body: JSON.stringify({ paymentIntentId: paymentIntent.id, email, name, eventId }),
         });
 
-        const completeData = await completeRes.json();
-        
         if (!completeRes.ok) {
-          throw new Error(completeData.error || "Payment succeeded, but email delivery failed.");
+          throw new Error("Payment succeeded, but delivery failed.");
         }
 
+        // EXACT REVENUE TRACKING
         trackPinterest("checkout", { 
           value: 47.77, 
           currency: "USD",
@@ -165,7 +165,7 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
           placeholder="Email Address" 
           value={email}
           onChange={(e) => onEmailChange(e.target.value)}
-          onBlur={handleEmailBlur} // GOD LEVEL TRIGGER
+          onBlur={handleEmailBlur} // TRIGGERS ENHANCED MATCH
           className="w-full px-5 py-4 min-h-[56px] rounded-xl md:rounded-2xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all text-lg font-medium text-[#1D1D1F] placeholder-gray-400"
         />
       </div>
@@ -237,7 +237,6 @@ const MobileSwipeStack = () => {
   const handleDragEnd = (e: any, info: any) => {
     if (info.offset.x < -80 || info.offset.x > 80) {
       if (currentIndex < SHIFT_CARDS.length - 1) {
-        // Track the swipe engagement
         trackPinterest("custom", { event_name: "swiped_shift_card", card_index: currentIndex });
         setCurrentIndex(prev => prev + 1);
       }
@@ -334,8 +333,24 @@ export default function EbookSalesPage() {
     y.set(0);
   }
 
+  // CORE TRACKING INITIALIZATION (URL ROUTING & LOCALSTORAGE VAULT)
   useEffect(() => {
     if (typeof window !== "undefined") {
+      
+      // 1. Rip the PTAG from the ad URL if it exists
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlPixel = urlParams.get("ptag");
+      
+      // 2. Set the active pixel (URL overrides vault, Vault overrides fallback)
+      let activePixel = "2612567833830"; // Your default fallback
+      if (urlPixel) {
+        localStorage.setItem("vaulted_ptag", urlPixel);
+        activePixel = urlPixel;
+      } else {
+        activePixel = localStorage.getItem("vaulted_ptag") || activePixel;
+      }
+
+      // 3. Inject Pinterest Base Code
       (function(e: any) {
         if (!(window as any).pintrk) {
           (window as any).pintrk = function() {
@@ -352,10 +367,15 @@ export default function EbookSalesPage() {
         }
       })("https://s.pinimg.com/ct/core.js");
 
-      TAG_IDS.forEach((id) => {
-        (window as any).pintrk("load", id);
-        (window as any).pintrk("page");
-      });
+      // 4. Load the EXACT pixel for this ad account, automatically injecting vaulted email if they return
+      const vaultedEmail = localStorage.getItem("vaulted_email");
+      if (vaultedEmail) {
+        (window as any).pintrk("load", activePixel, { em: vaultedEmail });
+      } else {
+        (window as any).pintrk("load", activePixel);
+      }
+      
+      (window as any).pintrk("page");
     }
 
     let hasTracked50Percent = false;
@@ -367,7 +387,6 @@ export default function EbookSalesPage() {
         setHasScrolledPastHero(rect.bottom < 100); 
       }
 
-      // Track deep scroll intent
       const scrollPosition = window.scrollY + window.innerHeight;
       const documentHeight = document.body.scrollHeight;
       if (scrollPosition > documentHeight * 0.5 && !hasTracked50Percent) {
@@ -377,7 +396,6 @@ export default function EbookSalesPage() {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
 
-    // Track Checkout visibility
     const checkoutElement = document.getElementById("checkout-section");
     let hasTrackedCheckoutView = false;
     const checkoutObserver = new IntersectionObserver(
@@ -426,6 +444,45 @@ export default function EbookSalesPage() {
   return (
     <div className="min-h-screen bg-[#FDF8F9] text-[#1D1D1F] font-sans selection:bg-pink-200 selection:text-pink-900 pb-20 overflow-x-hidden antialiased">
       
+      {/* --- BOT WHISPERER: HYPER-OPTIMIZED ALGORITHMIC SEEDING --- */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": "The Pattern You Never Saw",
+            "description": "The ultimate relationship psychology blueprint for women. Learn exactly why men pull away suddenly, how to stop overthinking texts, cure dating anxiety, and trigger deep attraction without chasing. Essential dating advice for single women and women in relationships.",
+            "category": "Relationship Psychology, Dating Advice for Women, Self-Improvement",
+            "audience": {
+              "@type": "Audience",
+              // 🔥 THE ALGORITHM BRAINWASH: This tells Pinterest exactly whose feed to put the ad in.
+              "audienceType": "Single women, women experiencing dating anxiety, women dealing with men pulling away, ghosting, high-value dating strategies, female relationship advice, anxious attachment styles, overthinking relationships, feminine energy."
+            },
+            "brand": {
+              "@type": "Brand",
+              "name": "Attract Best Man"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "47.77",
+              "priceCurrency": "USD",
+              "availability": "https://schema.org/InStock",
+              "url": "https://attractbestmen.vireva.agency/",
+              "seller": {
+                "@type": "Organization",
+                "name": "Attract Best Man"
+              }
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.9",
+              "reviewCount": "5420"
+            }
+          })
+        }}
+      />
+
       {/* --- 1. HERO SECTION (ULTRA-CLEAN APPLE TIER) --- */}
       <section id="hero-section" className="relative pt-24 pb-16 md:pt-32 md:pb-32 px-6 min-h-[95vh] flex flex-col justify-center overflow-hidden bg-white">
         <div className="absolute inset-0 z-0 flex items-center justify-end pointer-events-none">

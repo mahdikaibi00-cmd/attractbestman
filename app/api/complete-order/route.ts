@@ -3,7 +3,6 @@ import { Resend } from "resend";
 import Stripe from "stripe";
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
 import { DeliveryEmail } from "@/components/emails/DeliveryEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -47,7 +46,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `File Error: ${fsError.message}` }, { status: 500 });
     }
 
-    // 3. SEND THE EMAIL
+    // 3. SEND THE EMAIL (Lightning Fast Delivery)
     const { data: emailData, error: emailError } = await resend.emails.send({
       from: "Attract Best Man <attractbestman@vireva.agency>",
       to: [email],
@@ -66,54 +65,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: emailError.message }, { status: 500 });
     }
 
-    // 4. ADD TO MARKETING AUDIENCE
+    // 4. ADD TO MARKETING AUDIENCE (Silent Fail to protect UX)
     if (process.env.RESEND_AUDIENCE_ID) {
-      const { error: contactError } = await resend.contacts.create({
+      resend.contacts.create({
         email: email,
         firstName: firstName, 
         unsubscribed: false,
         audienceId: process.env.RESEND_AUDIENCE_ID,
-      });
-      
-      if (contactError) {
-         console.error("Resend Contact Error:", contactError);
-      }
+      }).catch(err => console.error("Resend Contact Error:", err));
     }
 
-    // 5. PINTEREST CONVERSIONS API (CAPI) : THE GHOST CATCHER
-    // This sends a server-to-server ping that bypasses all ad-blockers.
-    if (process.env.PINTEREST_ACCESS_TOKEN && process.env.PINTEREST_AD_ACCOUNT_ID) {
-      try {
-        // Securely hash the normalized email for Enhanced Match
-        const hashedEmail = crypto.createHash("sha256").update(email.toLowerCase().trim()).digest("hex");
-        
-        await fetch(`https://api.pinterest.com/v5/ad_accounts/${process.env.PINTEREST_AD_ACCOUNT_ID}/events`, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${process.env.PINTEREST_ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            data: [{
-              event_name: "checkout",
-              action_source: "web",
-              event_time: Math.floor(Date.now() / 1000),
-              event_id: eventId, // Ties backend and frontend perfectly together
-              user_data: {
-                em: [hashedEmail]
-              },
-              custom_data: {
-                value: 47.77,
-                currency: "USD"
-              }
-            }]
-          })
-        });
-      } catch (capiError) {
-        // We catch this silently so a tracking error never stops the customer from getting their book
-        console.error("Pinterest CAPI Error:", capiError);
+    // 5. STRIPE GOD-VIEW SYNC (Chargeback Protection)
+    // Updates the Stripe transaction to prove the digital asset was successfully delivered.
+    stripe.paymentIntents.update(paymentIntentId, {
+      metadata: {
+        fulfillment_status: "delivered",
+        delivered_at: new Date().toISOString(),
+        frontend_event_id: eventId // Matches the exact pixel event
       }
-    }
+    }).catch(err => console.error("Stripe Metadata Update Error:", err));
 
     return NextResponse.json({ success: true, message: "Order processed successfully.", data: emailData });
 
