@@ -12,7 +12,7 @@ import { Analytics } from "@vercel/analytics/next";
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 // --- PINTEREST TRACKING SETUP ---
-const TAG_IDS = ["2612612515475"];
+const TAG_IDS = ["2612612515475", "2612567833830"];
 
 const trackPinterest = (event: string, data?: any) => {
   if (typeof window !== "undefined" && (window as any).pintrk) {
