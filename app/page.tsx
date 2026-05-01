@@ -11,17 +11,24 @@ import { Analytics } from "@vercel/analytics/next";
 // --- STRIPE SETUP ---
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-// --- PINTEREST TRACKING SETUP ---
+// --- PINTEREST TRACKING SETUP (GOD LEVEL) ---
 const TAG_IDS = ["2612612515475", "2612567833830"];
 
-const trackPinterest = (event: string, data?: any) => {
+const trackPinterest = (event: string, data?: any, email?: string) => {
   if (typeof window !== "undefined" && (window as any).pintrk) {
+    // 1. AGGRESSIVE ENHANCED MATCH: Set email the second we get it
+    if (email && email.includes("@")) {
+      (window as any).pintrk("set", { em: email });
+    }
+
+    // 2. UNIVERSAL DEDUPLICATION: Ensure every event has a unique ID for timeline tracking
+    const enrichedData = data || {};
+    if (!enrichedData.event_id) {
+      enrichedData.event_id = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    }
+
     TAG_IDS.forEach((id) => {
-      if (data) {
-        (window as any).pintrk("track", event, data);
-      } else {
-        (window as any).pintrk("track", event);
-      }
+      (window as any).pintrk("track", event, enrichedData);
     });
   }
 };
@@ -60,11 +67,19 @@ const SHIFT_CARDS = [
   { icon: FileText, title: "The Overthinking", desc: "Drafting texts trying to 'fix' it.", ui: "[Draft]: Did I do something wrong?" }
 ];
 
-// --- CHECKOUT FORM COMPONENT (SAFARI BUG FIXED) ---
+// --- CHECKOUT FORM COMPONENT ---
 const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState, setCheckoutState }: any) => {
   const stripe = useStripe();
   const elements = useElements();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasTrackedCardFocus, setHasTrackedCardFocus] = useState(false);
+
+  // PRE-SUBMIT TRACKING: Grabs email the moment they click out of the box
+  const handleEmailBlur = () => {
+    if (email.includes("@")) {
+      trackPinterest("custom", { event_name: "entered_email" }, email);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +88,7 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
     setErrorMessage(null);
     const eventId = `evt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     
-    trackPinterest("custom", { event_name: "initiate_checkout", event_id: eventId });
+    trackPinterest("custom", { event_name: "initiate_checkout", event_id: eventId }, email);
     setCheckoutState("processing");
 
     try {
@@ -119,20 +134,21 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
           value: 47.77, 
           currency: "USD",
           order_id: paymentIntent.id,
-          event_id: eventId 
-        });
+          event_id: eventId,
+          line_items: [{ product_name: "The Pattern You Never Saw", product_price: 47.77 }]
+        }, email);
 
         setCheckoutState("success");
       }
     } catch (err: any) {
       console.error(err);
+      trackPinterest("custom", { event_name: "payment_failed", error_message: err.message }, email);
       setErrorMessage(err.message || "Payment failed. Please try again.");
       setCheckoutState("idle");
     }
   };
 
   return (
-    // Isolate forces a new stacking context so invisible layers cannot bleed over the form
     <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5 relative z-[9999] w-full pointer-events-auto isolate">
       <div className="space-y-4">
         <input 
@@ -149,12 +165,20 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
           placeholder="Email Address" 
           value={email}
           onChange={(e) => onEmailChange(e.target.value)}
+          onBlur={handleEmailBlur} // GOD LEVEL TRIGGER
           className="w-full px-5 py-4 min-h-[56px] rounded-xl md:rounded-2xl bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all text-lg font-medium text-[#1D1D1F] placeholder-gray-400"
         />
       </div>
 
-      {/* --- START OF CARD SECTION (BULLETPROOF FIX) --- */}
-      <div className="p-4 md:p-5 min-h-[56px] rounded-xl md:rounded-2xl bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-pink-500 focus-within:border-transparent transition-all relative z-[10000] pointer-events-auto isolate w-full shadow-sm">
+      <div 
+        className="p-4 md:p-5 min-h-[56px] rounded-xl md:rounded-2xl bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-pink-500 focus-within:border-transparent transition-all relative z-[10000] pointer-events-auto isolate w-full shadow-sm"
+        onFocus={() => {
+          if (!hasTrackedCardFocus) {
+            trackPinterest("custom", { event_name: "started_typing_card" }, email);
+            setHasTrackedCardFocus(true);
+          }
+        }}
+      >
         <div className="flex items-center justify-between mb-3 text-[11px] font-extrabold text-gray-400 uppercase tracking-widest relative z-[10001]">
           <span>Card Details</span>
           <ShieldCheck className="w-4 h-4 text-green-500" />
@@ -175,7 +199,6 @@ const CheckoutForm = ({ onEmailChange, email, name, onNameChange, checkoutState,
           }}/>
         </div>
       </div>
-      {/* --- END OF CARD SECTION --- */}
 
       <AnimatePresence>
         {errorMessage && (
@@ -212,9 +235,10 @@ const MobileSwipeStack = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleDragEnd = (e: any, info: any) => {
-    // If swiped left or right far enough, move to next card
     if (info.offset.x < -80 || info.offset.x > 80) {
       if (currentIndex < SHIFT_CARDS.length - 1) {
+        // Track the swipe engagement
+        trackPinterest("custom", { event_name: "swiped_shift_card", card_index: currentIndex });
         setCurrentIndex(prev => prev + 1);
       }
     }
@@ -222,8 +246,6 @@ const MobileSwipeStack = () => {
 
   return (
     <div className="flex lg:hidden flex-col items-center relative w-full h-[480px] mt-4 perspective-[1000px] z-20">
-      
-      {/* Swipe Indicator (Disappears when interaction starts) */}
       <AnimatePresence>
         {currentIndex === 0 && (
           <motion.div 
@@ -239,29 +261,22 @@ const MobileSwipeStack = () => {
         const isTop = i === currentIndex;
         const isGone = i < currentIndex;
         const isNext = i > currentIndex;
-        const offset = i - currentIndex; // How many cards behind the current one
+        const offset = i - currentIndex; 
 
         return (
           <motion.div
             key={i}
-            // Only the top card is draggable, and only if it's not the last card
             drag={isTop && currentIndex < SHIFT_CARDS.length - 1 ? "x" : false}
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.8}
             onDragEnd={handleDragEnd}
             whileDrag={{ scale: 1.02, cursor: "grabbing" }}
             animate={{
-              // If swiped away, throw it off screen. Otherwise keep centered.
               x: isGone ? (i % 2 === 0 ? -400 : 400) : 0,
-              // Stack offset: 0 for top, 24px per card behind. Swiped cards drop down.
               y: isGone ? 100 : isNext ? offset * 24 : 0,
-              // Scale down slightly as they go further back
               scale: isGone ? 0.8 : isNext ? 1 - offset * 0.05 : 1,
-              // Fade out background cards
               opacity: isGone ? 0 : 1 - (offset * 0.25),
-              // Swiped cards rotate as they fall off
               rotateZ: isGone ? (i % 2 === 0 ? -15 : 15) : 0,
-              // Layering: Top card is highest z-index
               zIndex: 10 - i,
             }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -293,13 +308,12 @@ export default function EbookSalesPage() {
   const [name, setName] = useState("");
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
   
-  // Visibility States
   const [hasScrolledPastHero, setHasScrolledPastHero] = useState(false);
   const [isCheckoutVisible, setIsCheckoutVisible] = useState(false);
   
   const [activeModal, setActiveModal] = useState<"none" | "privacy" | "terms">("none");
 
-  // 3D iPad Pro Effect variables
+  // 3D iPad Effect
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [10, -10]), { damping: 30, stiffness: 200 });
@@ -311,10 +325,8 @@ export default function EbookSalesPage() {
     const height = rect.height;
     const mouseX = event.clientX - rect.left;
     const mouseY = event.clientY - rect.top;
-    const xPct = mouseX / width - 0.5;
-    const yPct = mouseY / height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
+    x.set(mouseX / width - 0.5);
+    y.set(mouseY / height - 0.5);
   }
 
   function handleMouseLeave() {
@@ -346,20 +358,35 @@ export default function EbookSalesPage() {
       });
     }
 
+    let hasTracked50Percent = false;
+
     const handleScroll = () => {
       const heroSection = document.getElementById("hero-section");
       if (heroSection) {
         const rect = heroSection.getBoundingClientRect();
         setHasScrolledPastHero(rect.bottom < 100); 
       }
+
+      // Track deep scroll intent
+      const scrollPosition = window.scrollY + window.innerHeight;
+      const documentHeight = document.body.scrollHeight;
+      if (scrollPosition > documentHeight * 0.5 && !hasTracked50Percent) {
+        trackPinterest("custom", { event_name: "scrolled_50_percent" });
+        hasTracked50Percent = true;
+      }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
 
-    // Intersection Observer for Checkout Section (Hides Sticky CTA when in view)
+    // Track Checkout visibility
     const checkoutElement = document.getElementById("checkout-section");
+    let hasTrackedCheckoutView = false;
     const checkoutObserver = new IntersectionObserver(
       ([entry]) => {
         setIsCheckoutVisible(entry.isIntersecting);
+        if (entry.isIntersecting && !hasTrackedCheckoutView) {
+          trackPinterest("custom", { event_name: "viewed_checkout_section" });
+          hasTrackedCheckoutView = true;
+        }
       },
       { threshold: 0.1 }
     );
@@ -387,7 +414,13 @@ export default function EbookSalesPage() {
     document.getElementById("checkout-section")?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Sticky CTA Logic
+  const handleFaqClick = (index: number) => {
+    if (openFaqIndex !== index) {
+      trackPinterest("custom", { event_name: "read_faq", faq_index: index });
+    }
+    setOpenFaqIndex(openFaqIndex === index ? null : index);
+  };
+
   const showStickyCta = hasScrolledPastHero && !isCheckoutVisible;
 
   return (
@@ -395,16 +428,12 @@ export default function EbookSalesPage() {
       
       {/* --- 1. HERO SECTION (ULTRA-CLEAN APPLE TIER) --- */}
       <section id="hero-section" className="relative pt-24 pb-16 md:pt-32 md:pb-32 px-6 min-h-[95vh] flex flex-col justify-center overflow-hidden bg-white">
-        
-        {/* Absolute pristine background with incredibly soft, expensive lighting */}
         <div className="absolute inset-0 z-0 flex items-center justify-end pointer-events-none">
           <div className="w-[90vw] h-[90vw] max-w-[900px] max-h-[900px] bg-[radial-gradient(circle_at_right,_var(--tw-gradient-stops))] from-pink-100/50 via-gray-50/10 to-transparent blur-[100px] rounded-full translate-x-1/3"></div>
         </div>
         
         {/* DESKTOP LAYOUT */}
         <div className="hidden lg:grid max-w-[1100px] mx-auto grid-cols-12 gap-8 items-center relative z-20 w-full">
-          
-          {/* Left Column: Text & Persuasion (Takes up 6 columns) */}
           <div className="col-span-6 flex flex-col items-start text-left pr-4">
             <h1 className="font-extrabold leading-[1.05] tracking-tighter text-balance">
               <span className="block text-[2.75rem] text-[#1D1D1F] mb-1">He Didn't</span>
@@ -417,7 +446,6 @@ export default function EbookSalesPage() {
               <span className="text-gray-500 font-normal">This shows you what actually happened.</span>
             </p>
 
-            {/* Premium Glowing Bullets */}
             <div className="flex flex-col gap-4 mt-8 mb-10 w-full">
               {[
                 "Stop overthinking his silence.",
@@ -446,36 +474,28 @@ export default function EbookSalesPage() {
             </div>
           </div>
 
-          {/* Right Column: 3D iPad Pro Display (Takes up 6 columns) */}
-          <div className="col-span-6 flex justify-end relative perspective-[1200px] w-full">
+          <div className="col-span-6 flex justify-end relative perspective-[1200px] w-full" onMouseEnter={() => trackPinterest("custom", { event_name: "hovered_product_render" })}>
             <motion.div 
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
               style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
               className="relative w-full max-w-[440px] aspect-[3/4] rounded-[2.5rem] border-[14px] border-[#1c1c1e] bg-[#000000] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.3)] cursor-pointer group transform-gpu rotate-y-[-5deg] rotate-x-[2deg]"
             >
-              {/* Fake iPad Power Button */}
               <div className="absolute top-10 -right-[18px] w-[5px] h-12 bg-gray-800 rounded-r-md"></div>
-              {/* Fake iPad Volume Buttons */}
               <div className="absolute top-28 -right-[18px] w-[5px] h-16 bg-gray-800 rounded-r-md"></div>
               
               <div className="relative w-full h-full rounded-[1.4rem] overflow-hidden">
                 <Image src="/ebook1.jpg" alt="Book Cover" fill priority className="object-cover transition-transform duration-700 group-hover:scale-105" />
-                {/* Stunning Screen Reflection */}
                 <div className="absolute inset-0 bg-gradient-to-tr from-white/10 via-transparent to-black/20 pointer-events-none mix-blend-overlay"></div>
                 <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
               </div>
             </motion.div>
-            
-            {/* Deep glow behind the iPad */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-pink-400/15 blur-[60px] -z-10 rounded-full"></div>
           </div>
-
         </div>
 
-        {/* MOBILE LAYOUT (Thumb-friendly, Hyper-Emotional, Linear Flow) */}
+        {/* MOBILE LAYOUT */}
         <div className="flex lg:hidden flex-col items-center text-center relative z-20 w-full">
-          
           <h1 className="font-extrabold leading-[1.05] tracking-tighter w-full mb-8">
             <span className="block text-3xl text-[#1D1D1F] mb-1">He Didn't</span>
             <span className="block text-[3.25rem] text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-rose-500 pb-1 drop-shadow-sm">“Lose Interest.”</span>
@@ -495,7 +515,6 @@ export default function EbookSalesPage() {
              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] bg-pink-400/20 blur-[50px] -z-10 rounded-full"></div>
           </div>
 
-          {/* Premium Glowing Bullets (Mobile) */}
           <div className="flex flex-col gap-3 mb-10 w-full max-w-[320px] text-left">
               {[
                 "Stop overthinking his silence.",
@@ -522,7 +541,6 @@ export default function EbookSalesPage() {
             <Star className="w-4 h-4 text-yellow-500 fill-current" />
             “I wish I knew this 3 months ago.”
           </div>
-
         </div>
       </section>
 
@@ -539,7 +557,6 @@ export default function EbookSalesPage() {
           </div>
         </div>
 
-        {/* DESKTOP LAYOUT (Horizontal Grid) */}
         <div className="hidden lg:grid max-w-7xl mx-auto lg:grid-cols-4 gap-6 pb-8 px-6">
           {SHIFT_CARDS.map((card, i) => (
             <motion.div 
@@ -566,9 +583,7 @@ export default function EbookSalesPage() {
           ))}
         </div>
 
-        {/* MOBILE LAYOUT (Swipeable 3D Deck) */}
         <MobileSwipeStack />
-
       </section>
 
       {/* --- 3. "THIS IS NOT A BOOK" (DARK SECTION) --- */}
@@ -652,11 +667,9 @@ export default function EbookSalesPage() {
               <motion.p variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}>You check your phone again.</motion.p>
               <motion.p variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}>He was online.</motion.p>
               <motion.p variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }}>He saw your message.</motion.p>
-              
               <motion.p variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }} className="text-[#1D1D1F] font-extrabold text-3xl md:text-4xl pt-2">
                 No reply.
               </motion.p>
-              
               <motion.p variants={{ hidden: { opacity: 0, y: 15 }, visible: { opacity: 1, y: 0 } }} className="text-rose-500 font-bold text-3xl md:text-4xl drop-shadow-[0_0_15px_rgba(244,63,94,0.3)]">
                 Now your mind starts racing...
               </motion.p>
@@ -799,13 +812,11 @@ export default function EbookSalesPage() {
       {/* --- 9. CHECKOUT SECTION (THE PERSUASION ENGINE) --- */}
       <section id="checkout-section" className="py-24 md:py-32 px-6 relative bg-[#FDF8F9] overflow-hidden">
         
-        {/* Soft Background Globs */}
         <div className="absolute top-0 left-1/4 w-[40vw] h-[40vw] bg-pink-200/30 blur-[100px] rounded-full pointer-events-none z-0"></div>
         <div className="absolute bottom-0 right-1/4 w-[30vw] h-[30vw] bg-rose-200/30 blur-[80px] rounded-full pointer-events-none z-0"></div>
 
         <div className="max-w-6xl mx-auto grid lg:grid-cols-12 gap-12 lg:gap-16 items-start relative z-20">
           
-          {/* LEFT SIDE (Desktop Persuasion / Mobile Top Info) */}
           <div className="lg:col-span-7 flex flex-col gap-6 lg:gap-10 order-1">
             
             <div className="text-center lg:text-left space-y-4">
@@ -820,7 +831,6 @@ export default function EbookSalesPage() {
               </p>
             </div>
 
-            {/* Mobile Trust Strip */}
             <div className="flex lg:hidden flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-extrabold text-[#1D1D1F] uppercase tracking-wider">
               <span className="flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-green-500"/> Secure</span>
               <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-green-500"/> Instant</span>
@@ -849,7 +859,6 @@ export default function EbookSalesPage() {
             </div>
           </div>
 
-          {/* RIGHT SIDE (Payment Card - Apple Style Solid Container) */}
           <div className="lg:col-span-5 w-full max-w-[420px] mx-auto order-2 relative z-[9900] mt-4 lg:mt-0 isolate pointer-events-auto">
             <div className="bg-white border border-gray-100 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-[0_30px_60px_rgba(0,0,0,0.08)] relative z-[9950] isolate pointer-events-auto">
               
@@ -884,7 +893,6 @@ export default function EbookSalesPage() {
             </div>
           </div>
 
-          {/* MOBILE ONLY Guarantee & Micro Trust (Order 3) */}
           <div className="lg:hidden order-3 text-center space-y-8 mt-4 px-4 w-full">
             <div className="bg-green-50 border border-green-100 rounded-3xl p-8 space-y-4">
               <ShieldCheck className="w-8 h-8 text-green-500 mx-auto" />
@@ -912,7 +920,7 @@ export default function EbookSalesPage() {
           {FAQS.map((faq, i) => (
             <div key={i} className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md hover:border-pink-100">
               <button 
-                onClick={() => setOpenFaqIndex(openFaqIndex === i ? null : i)}
+                onClick={() => handleFaqClick(i)}
                 className="w-full px-8 py-8 text-left flex justify-between items-center focus:outline-none"
               >
                 <span className="font-extrabold text-lg md:text-xl text-[#1D1D1F] pr-6">{faq.question}</span>
