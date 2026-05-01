@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import Stripe from "stripe";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 import { DeliveryEmail } from "@/components/emails/DeliveryEmail";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -13,7 +14,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { paymentIntentId, email, name } = body;
+    const { paymentIntentId, email, name, eventId } = body;
 
     if (!paymentIntentId || !email) {
       return NextResponse.json({ error: "Missing required data" }, { status: 400 });
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `File Error: ${fsError.message}` }, { status: 500 });
     }
 
-    // 3. SEND THE EMAIL (Using the official React component pattern)
+    // 3. SEND THE EMAIL
     const { data: emailData, error: emailError } = await resend.emails.send({
       from: "Attract Best Man <attractbestman@vireva.agency>",
       to: [email],
@@ -76,6 +77,41 @@ export async function POST(request: Request) {
       
       if (contactError) {
          console.error("Resend Contact Error:", contactError);
+      }
+    }
+
+    // 5. PINTEREST CONVERSIONS API (CAPI) : THE GHOST CATCHER
+    // This sends a server-to-server ping that bypasses all ad-blockers.
+    if (process.env.PINTEREST_ACCESS_TOKEN && process.env.PINTEREST_AD_ACCOUNT_ID) {
+      try {
+        // Securely hash the normalized email for Enhanced Match
+        const hashedEmail = crypto.createHash("sha256").update(email.toLowerCase().trim()).digest("hex");
+        
+        await fetch(`https://api.pinterest.com/v5/ad_accounts/${process.env.PINTEREST_AD_ACCOUNT_ID}/events`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${process.env.PINTEREST_ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            data: [{
+              event_name: "checkout",
+              action_source: "web",
+              event_time: Math.floor(Date.now() / 1000),
+              event_id: eventId, // Ties backend and frontend perfectly together
+              user_data: {
+                em: [hashedEmail]
+              },
+              custom_data: {
+                value: 47.77,
+                currency: "USD"
+              }
+            }]
+          })
+        });
+      } catch (capiError) {
+        // We catch this silently so a tracking error never stops the customer from getting their book
+        console.error("Pinterest CAPI Error:", capiError);
       }
     }
 

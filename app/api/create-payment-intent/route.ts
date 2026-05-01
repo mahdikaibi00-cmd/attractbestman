@@ -16,7 +16,15 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { email, name } = body;
+    
+    // 🔥 GOD LEVEL: Extracting the UTMs passed from our highly-tuned frontend
+    const { 
+      email, 
+      name, 
+      utm_source = "direct", 
+      utm_campaign = "none", 
+      utm_content = "none" 
+    } = body;
 
     if (!email || !name) {
       return NextResponse.json(
@@ -38,7 +46,17 @@ export async function POST(request: Request) {
         customer_name: name,
         customer_email: email,
         product: "The Pattern You Never Saw",
-        product_type: "Digital PDF"
+        product_type: "Digital PDF",
+        
+        // 🔥 STRIPE DASHBOARD GOD-VIEW
+        // This permanently brands the transaction with the exact ad that generated it.
+        // The .substring(0, 500) protects against Stripe crashing from malformed/overly long URLs.
+        utm_source: String(utm_source).substring(0, 500),
+        utm_campaign: String(utm_campaign).substring(0, 500),
+        utm_content: String(utm_content).substring(0, 500),
+        
+        // Timestamp for forensic tracking
+        intent_created_at: new Date().toISOString()
       },
     });
 
